@@ -5,3 +5,4 @@ export default (sequelize, DataTypes) =>
         status: DataTypes.STRING, // e.g., 'confirmed', 'cancelled', 'pending'
         note: DataTypes.TEXT, // additional notes or instructions
     });
+    

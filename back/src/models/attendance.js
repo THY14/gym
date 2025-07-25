@@ -5,3 +5,4 @@ export default (sequelize, DataTypes) =>
         checkInTime: DataTypes.TIME,
         checkOutTime: DataTypes.TIME
     });
+    

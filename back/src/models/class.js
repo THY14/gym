@@ -8,3 +8,4 @@ export default (sequelize, DataTypes) =>
         catagory: DataTypes.STRING, // e.g., 'yoga', 'strength training', 'cardio'
         status: DataTypes.STRING // e.g., 'active', 'inactive'
     });
+    

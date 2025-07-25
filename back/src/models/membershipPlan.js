@@ -6,3 +6,4 @@ export default (sequelize, DataTypes) =>
         benefits: DataTypes.TEXT,
         status: DataTypes.STRING // e.g., 'active', 'inactive'
     });
+    

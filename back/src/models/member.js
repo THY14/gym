@@ -7,3 +7,4 @@ export default (sequelize, DataTypes) =>
         joinDate: DataTypes.DATE,
         status: DataTypes.STRING
     });
+    

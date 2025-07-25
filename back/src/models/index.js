@@ -58,7 +58,6 @@ db.class.hasMany(db.attendance, { foreignKey: 'classId' });
 db.class.belongsTo(db.trainer, { foreignKey: 'trainerId' });
 db.class.belongsToMany(db.member, { through: db.attendance, foreignKey: 'classId' });
 
-
 db.booking.belongsTo(db.member, { foreignKey: 'memberId' });
 db.booking.belongsTo(db.class, { foreignKey: 'classId' });
 db.booking.belongsTo(db.trainer, { foreignKey: 'trainerId' });

@@ -7,3 +7,4 @@ export default (sequelize, DataTypes) =>
         experience: DataTypes.INTEGER, // in years
         status: DataTypes.STRING // e.g., 'active', 'inactive'
     });
+    

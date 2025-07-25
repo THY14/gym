@@ -5,3 +5,4 @@ export default (sequelize, DataTypes) =>
         method: DataTypes.STRING, // e.g., 'credit_card', 'cash', 'bank_transfer'
         status: DataTypes.STRING, // e.g., 'completed', 'pending', 'failed'
     });
+    

@@ -3,3 +3,6 @@ export default (sequelize, DataTypes) =>
         role: DataTypes.STRING, // e.g., 'superadmin', 'manager'
         permissions: DataTypes.TEXT, // JSON string or text describing permissions
     });
+
+
+    

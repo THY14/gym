@@ -11,6 +11,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+
 app.use('/docs',serveSwagger, setupSwagger);
 
 app.use('/auth', AuthRoutes);

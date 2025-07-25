@@ -182,7 +182,6 @@ async function seed() {
     console.log("✅ DB Synced Successfully.");
      process.exit(0);
 
-
   } catch (err) {
     console.error("❌ DB Connection Error:", err);
     process.exit(1);
