@@ -32,7 +32,7 @@ const Contact = () => {
           <div 
             className="h-64 bg-cover bg-center"
             style={{
-              backgroundImage: 'url(/Gym.jpg)',
+              backgroundImage: 'url(/CS.jpg)',
               filter: 'brightness(0.4)'
             }}
           />
@@ -61,9 +61,9 @@ const Contact = () => {
                   <div>
                     <h3 className="text-lg font-semibold text-white mb-2">Address</h3>
                     <p className="text-gray-400">
-                      123 Fitness Street<br />
-                      Downtown District<br />
-                      City, State 12345
+                      No. 123, Street 271<br />
+                      Boeng Keng Kang 3, Chamkarmon<br />
+                      Phnom Penh, Cambodia
                     </p>
                   </div>
                 </div>
@@ -74,7 +74,7 @@ const Contact = () => {
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold text-white mb-2">Phone</h3>
-                    <p className="text-gray-400">(555) 123-4567</p>
+                    <p className="text-gray-400">(885) 123-456-789</p>
                   </div>
                 </div>
 
@@ -98,6 +98,27 @@ const Contact = () => {
                       <p>Monday - Friday: 5:00 AM - 11:00 PM</p>
                       <p>Saturday - Sunday: 6:00 AM - 10:00 PM</p>
                       <p className="text-red-400 font-medium">24/7 Access for Members</p>
+                    </div>
+                    {/* Google Map */}
+                    <div className="mt-8">
+                      <h3 className="text-lg font-semibold text-white mb-4">Find Us on Google Maps</h3>
+                      <a 
+                        href="https://www.google.com/maps/place/123+St+271,+Phnom+Penh,+Cambodia" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="block rounded-xl overflow-hidden ring-1 ring-gray-700 hover:ring-red-600 transition duration-300"
+                      >
+                        <div className="w-full aspect-[4/3]">
+                          <iframe
+                            title="Gym Location"
+                            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d1951.5766890466467!2d104.91230449999999!3d11.535294000000003!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x310951e340931f91%3A0xb3022cf70c2571c1!2sSt+271%2C+Phnom+Penh!5e0!3m2!1sen!2skh!4v1721272181835!5m2!1sen!2skh"
+                            className="w-full h-full border-0 rounded-xl"
+                            allowFullScreen=""
+                            loading="lazy"
+                            referrerPolicy="no-referrer-when-downgrade"
+                          ></iframe>
+                        </div>
+                      </a>
                     </div>
                   </div>
                 </div>

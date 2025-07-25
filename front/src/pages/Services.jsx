@@ -6,16 +6,16 @@ const Services = () => {
   const [classes, setClasses] = useState([]);
   const navigate = useNavigate();
 
-  // Mock data for classes with better image distribution
+  // Local mock data for demonstration (replace with API call later)
   const mockClasses = [
     {
       id: 1,
-      name: 'Strength Training',
+      name: 'Strength & Conditioning',
       description: 'Build muscle, increase strength, and tone your body with our comprehensive strength training program.',
       capacity: 15,
-      duration: 60,
-      price: 25,
-      image: '/Equidment.jpg',
+      duration: 90,
+      price: 30,
+      image: '/Strenght.jpg',
       trainer: {
         user: {
           firstName: 'Sarah',
@@ -23,16 +23,16 @@ const Services = () => {
         }
       },
       features: ['Personal workout plans', 'Form correction', 'Progressive overload'],
-      availability: 'Monday to Sunday'
+      availability: 'Monday to Friday'
     },
     {
       id: 2,
       name: 'Yoga & Wellness',
       description: 'Find balance, flexibility, and inner peace through our guided yoga sessions.',
       capacity: 20,
-      duration: 75,
-      price: 20,
-      image: '/Health & Fitness.jpg',
+      duration: 60,
+      price: 25,
+      image: '/Yoga&Wellness.jpg',
       trainer: {
         user: {
           firstName: 'Emma',
@@ -44,12 +44,12 @@ const Services = () => {
     },
     {
       id: 3,
-      name: 'Cardio Conditioning',
+      name: 'Cardio Class',
       description: 'High-intensity cardiovascular workouts to boost your endurance and burn calories.',
       capacity: 25,
-      duration: 45,
-      price: 18,
-      image: '/Cardio.jpg',
+      duration: 75,
+      price: 25,
+      image: '/CardioClass.jpg',
       trainer: {
         user: {
           firstName: 'Mike',
@@ -62,25 +62,24 @@ const Services = () => {
   ];
 
   useEffect(() => {
-    // FRONTEND-ONLY: Using mock data for now
+    // Using local mock data for now
     setClasses(mockClasses);
-    // BACKEND TODO:
-    // Replace with real fetch:
+
+    // Later, replace with real backend call like:
     // fetch('/api/classes')
     //   .then(res => res.json())
     //   .then(data => setClasses(data))
     //   .catch(err => console.error(err));
   }, []);
 
-  // TODO: Replace this static array with data fetched from the backend
+  // Local list of personal trainers
   const trainers = [
     {
       id: 1,
       name: 'Sarah Johnson',
       specialization: 'Strength Training & Nutrition',
       experience: '8 years',
-      bio: 'Certified personal trainer specializing in strength training and nutrition coaching. Passionate about helping clients achieve their fitness goals through personalized workout plans and dietary guidance.',
-      // TODO: Replace with professional trainer headshot
+      bio: 'Certified personal trainer specializing in strength training and nutrition coaching...',
       image: '/Group_Persoanl_Trainer.jpg',
       certifications: ['NASM-CPT', 'Precision Nutrition', 'Corrective Exercise Specialist'],
       specialties: ['Weight Loss', 'Muscle Building', 'Nutrition Planning', 'Form Correction'],
@@ -93,8 +92,7 @@ const Services = () => {
       name: 'Mike Rodriguez',
       specialization: 'Cardio & HIIT',
       experience: '6 years',
-      bio: 'High-energy trainer focused on cardiovascular fitness and high-intensity interval training. Makes every workout fun and challenging while ensuring proper form and safety.',
-      // TODO: Replace with energetic trainer action shot
+      bio: 'High-energy trainer focused on cardiovascular fitness and high-intensity interval training...',
       image: '/Cardio.jpg',
       certifications: ['ACSM-CPT', 'TRX Certified', 'HIIT Specialist'],
       specialties: ['HIIT Training', 'Cardio Conditioning', 'Fat Loss', 'Endurance Building'],
@@ -107,8 +105,7 @@ const Services = () => {
       name: 'Emma Chen',
       specialization: 'Yoga & Wellness',
       experience: '10 years',
-      bio: 'Experienced yoga instructor and wellness coach. Helps clients find balance between physical fitness and mental well-being through mindful movement and meditation practices.',
-      // TODO: Replace with peaceful yoga instructor image
+      bio: 'Experienced yoga instructor and wellness coach. Helps clients find balance...',
       image: '/Health & Fitness.jpg',
       certifications: ['RYT-500', 'Meditation Teacher', 'Wellness Coach'],
       specialties: ['Yoga', 'Meditation', 'Flexibility', 'Stress Management', 'Mindfulness'],
@@ -121,8 +118,7 @@ const Services = () => {
       name: 'David Thompson',
       specialization: 'Functional Fitness',
       experience: '7 years',
-      bio: 'Former athlete turned trainer, specializing in functional movement and sports performance. Focuses on injury prevention and mobility to help clients move better in daily life.',
-      // TODO: Replace with athletic trainer demonstration image
+      bio: 'Former athlete turned trainer, specializing in functional movement...',
       image: '/Equidment.jpg',
       certifications: ['CSCS', 'FMS Level 2', 'Sports Performance'],
       specialties: ['Functional Movement', 'Sports Performance', 'Injury Prevention', 'Mobility'],
@@ -135,7 +131,8 @@ const Services = () => {
   return (
     <div className="min-h-screen pt-16 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Hero Section with Background Image */}
+
+        {/* Page Hero Section */}
         <div className="relative mb-16 rounded-2xl overflow-hidden">
           <div 
             className="h-64 bg-cover bg-center"
@@ -154,7 +151,7 @@ const Services = () => {
           </div>
         </div>
 
-
+        {/* Class Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {classes.map((classItem) => (
             <div key={classItem.id} className="bg-gray-900 rounded-xl overflow-hidden hover:transform hover:scale-105 transition-all duration-300">
@@ -181,36 +178,23 @@ const Services = () => {
                     <Clock className="h-5 w-5 mr-3 text-red-600" />
                     <span>{classItem.duration} minutes</span>
                   </div>
-                  
                   <div className="flex items-center text-gray-300">
                     <Users className="h-5 w-5 mr-3 text-red-600" />
                     <span>Max {classItem.capacity} participants</span>
                   </div>
-                  
                   <div className="flex items-center text-gray-300">
                     <Calendar className="h-5 w-5 mr-3 text-red-600" />
                     <span>{classItem.availability}</span>
                   </div>
-                  
                   <div className="flex items-center text-gray-300">
                     <DollarSign className="h-5 w-5 mr-3 text-red-600" />
                     <span>Instructor: {classItem.trainer?.user?.firstName} {classItem.trainer?.user?.lastName}</span>
                   </div>
                 </div>
 
-                {classItem.features && (
-                  <div className="mb-6">
-                    <h4 className="text-white font-semibold mb-2">What You'll Get:</h4>
-                    <ul className="space-y-1">
-                      {classItem.features.map((feature, index) => (
-                        <li key={index} className="text-gray-400 text-sm">• {feature}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-
+                {/* Button updated to redirect to /dashboard after login */}
                 <button 
-                  onClick={() => navigate('/login')}
+                  onClick={() => navigate('/dashboard')}
                   className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-4 rounded-lg font-semibold transition-colors duration-300">
                   Book Class
                 </button>
@@ -219,21 +203,19 @@ const Services = () => {
           ))}
         </div>
 
-                {/* Personal Trainers Section */}
+        {/* Trainers Section */}
         <div className="mt-16 mb-16">
-        <div className="text-center mb-16">
-          <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">Choose Your Personal Trainer</h1>
-          <p className="text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
-            Our certified trainers are here to help you achieve your fitness goals. 
-            Browse their profiles and find the perfect match for your training needs.
-          </p>
-        </div>         
+          <div className="text-center mb-16">
+            <h1 className="text-4xl md:text-6xl font-bold text-white mb-6">Choose Your Personal Trainer</h1>
+            <p className="text-xl text-gray-400 max-w-3xl mx-auto leading-relaxed">
+              Our certified trainers are here to help you achieve your fitness goals.
+            </p>
+          </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {trainers.map((trainer) => (
               <div key={trainer.id} className="bg-gray-900 rounded-2xl overflow-hidden hover:transform hover:scale-105 transition-all duration-300">
                 <div className="md:flex">
-                  {/* Trainer Image */}
                   <div className="md:w-1/3">
                     <img 
                       src={trainer.image} 
@@ -241,8 +223,6 @@ const Services = () => {
                       className="w-full h-64 md:h-full object-cover"
                     />
                   </div>
-                  
-                  {/* Trainer Information */}
                   <div className="md:w-2/3 p-6">
                     <div className="flex items-start justify-between mb-4">
                       <div>
@@ -253,7 +233,6 @@ const Services = () => {
 
                     <p className="text-gray-300 text-sm mb-4 leading-relaxed">{trainer.bio}</p>
 
-                    {/* Specialties */}
                     <div className="mb-4">
                       <h4 className="text-white font-semibold mb-2">Specialties:</h4>
                       <div className="flex flex-wrap gap-2">
@@ -265,7 +244,6 @@ const Services = () => {
                       </div>
                     </div>
 
-                    {/* Certifications */}
                     <div className="mb-4">
                       <h4 className="text-white font-semibold mb-2">Certifications:</h4>
                       <div className="flex flex-wrap gap-2">
@@ -277,13 +255,11 @@ const Services = () => {
                       </div>
                     </div>
 
-                    {/* Availability */}
                     <div className="mb-4">
                       <h4 className="text-white font-semibold mb-1">Availability:</h4>
                       <p className="text-gray-400 text-sm">{trainer.availability}</p>
                     </div>
 
-                    {/* Contact Information */}
                     <div className="flex items-center space-x-4 mb-4 text-sm">
                       <div className="flex items-center text-gray-400">
                         <Phone className="h-4 w-4 mr-1" />
@@ -295,10 +271,10 @@ const Services = () => {
                       </div>
                     </div>
 
-                    {/* Action Buttons */}
+                    {/* Button updated to redirect to /dashboard after login */}
                     <div className="flex space-x-3">
                       <button 
-                        onClick={() => navigate('/login')}
+                        onClick={() => navigate('/dashboard')}
                         className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg font-semibold transition-colors text-sm">
                         Book Session
                       </button>

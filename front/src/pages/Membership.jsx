@@ -1,77 +1,93 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 import { Check, Star, Crown, Zap, Shield } from 'lucide-react';
 
 const Membership = () => {
   const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState(null);
+  const navigate = useNavigate();
 
   const memberships = [
-  {
-    id: 1,
-    name: '1 Month',
-    duration: 1,
-    price: 35,
-    icon: Zap,
-    features: [
-      'Gym access',
-      'Group classes',
-      'Locker room',
-      'Fitness assessment'
-    ],
-    description: 'A great start to explore our gym and try the basics.'
-  },
-  {
-    id: 2,
-    name: '3 Months',
-    duration: 3,
-    price: 75,
-    icon: Star,
-    features: [
-      'Everything in 1 Month',
-      '1 personal training session',
-      'Nutrition tips',
-      'Guest passes'
-    ],
-    popular: true,
-    description: 'Build momentum and get extra support along the way.'
-  },
-  {
-    id: 3,
-    name: '6 Months',
-    duration: 6,
-    price: 115,
-    icon: Shield,
-    features: [
-      'Everything in 3 Months',
-      '3 training sessions',
-      'Premium classes',
-      'Free gear'
-    ],
-    description: 'Great for steady progress and premium-level perks.'
-  },
-  {
-    id: 4,
-    name: '1 Year',
-    duration: 12,
-    price: 175,
-    icon: Crown,
-    features: [
-      'Everything in 6 Months',
-      '6 training sessions',
-      'VIP events',
-      'Free massage'
-    ],
-    description: 'Commit long-term and enjoy full benefits and savings.'
-  }
-];
+    {
+      id: 1,
+      name: '1 Month',
+      duration: 1,
+      price: 35,
+      icon: Zap,
+      features: [
+        'Gym access',
+        'Group classes',
+        'Locker room',
+        'Fitness assessment'
+      ],
+      description: 'A great start to explore our gym and try the basics.'
+    },
+    {
+      id: 2,
+      name: '3 Months',
+      duration: 3,
+      price: 75,
+      icon: Star,
+      features: [
+        'Everything in 1 Month',
+        '1 personal training session',
+        'Nutrition tips',
+        'Guest passes'
+      ],
+      popular: true,
+      description: 'Build momentum and get extra support along the way.'
+    },
+    {
+      id: 3,
+      name: '6 Months',
+      duration: 6,
+      price: 115,
+      icon: Shield,
+      features: [
+        'Everything in 3 Months',
+        '3 training sessions',
+        'Premium classes',
+        'Free gear'
+      ],
+      description: 'Great for steady progress and premium-level perks.'
+    },
+    {
+      id: 4,
+      name: '1 Year',
+      duration: 12,
+      price: 175,
+      icon: Crown,
+      features: [
+        'Everything in 6 Months',
+        '6 training sessions',
+        'VIP events',
+        'Free massage'
+      ],
+      description: 'Commit long-term and enjoy full benefits and savings.'
+    }
+  ];
 
   const red = {
-      bg: 'bg-red-600',
-      hover: 'hover:bg-red-700',
-      ring: 'ring-red-600',
-      text: 'text-red-400'
+    bg: 'bg-red-600',
+    hover: 'hover:bg-red-700',
+    ring: 'ring-red-600',
+    text: 'text-red-400'
+  };
+
+  // Determine the redirect path based on user role
+  const getRedirectPath = () => {
+    if (!user) return '/register';
+    switch (user.role) {
+      case 'member':
+        return '/member-dashboard';
+      case 'trainer':
+        return '/trainer-dashboard';
+      case 'admin':
+        return '/admin-dashboard';
+      default:
+        return '/staff-dashboard';
+    }
   };
 
   return (
@@ -101,7 +117,7 @@ const Membership = () => {
                   isSelected ? `ring-2 ${red.ring}` : ''
                 }`}
                 onClick={() => setSelectedPlan(plan.id)}
-              > {}
+              >
                 <div className="text-center mb-6">
                   <div className={`${red.bg} w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4`}>
                     <Icon className="h-8 w-8 text-white" />
@@ -123,9 +139,10 @@ const Membership = () => {
                 </ul>
 
                 <button
-                  className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors ${red.bg + ' ' + red.hover + ' text-white'}`}
-                  onClick={() => {window.location.href = '/login';}}>
-                Join Now
+                  className={`w-full py-3 px-4 rounded-lg font-semibold transition-colors ${red.bg} ${red.hover} text-white`}
+                  onClick={() => navigate(getRedirectPath())}
+                >
+                  Join Now
                 </button>
               </div>
             );

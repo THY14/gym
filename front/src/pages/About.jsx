@@ -3,7 +3,6 @@ import { Award, Users, Clock, Target, Star, Phone, Mail } from 'lucide-react';
 
 const About = () => {
   
-
   return (
     <div className="min-h-screen pt-16 py-12">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -47,7 +46,7 @@ const About = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="bg-gray-900 rounded-xl overflow-hidden hover:transform hover:scale-105 transition-all duration-300">
               <img 
-                src="/Equidment.jpg" 
+                src="/GymEquidment.jpg" 
                 alt="Excellence in Equipment" 
                 className="w-full h-48 object-cover"
               />
@@ -62,7 +61,7 @@ const About = () => {
 
             <div className="bg-gray-900 rounded-xl overflow-hidden hover:transform hover:scale-105 transition-all duration-300">
               <img 
-                src="/Group_Persoanl_Trainer.jpg" 
+                src="/Group_Training.jpg" 
                 alt="Community Training" 
                 className="w-full h-48 object-cover"
               />
@@ -77,7 +76,7 @@ const About = () => {
 
             <div className="bg-gray-900 rounded-xl overflow-hidden hover:transform hover:scale-105 transition-all duration-300">
               <img 
-                src="/Cardio.jpg" 
+                src="/Innovation.jpg" 
                 alt="Innovation in Cardio" 
                 className="w-full h-48 object-cover"
               />
@@ -128,64 +127,18 @@ const About = () => {
           </div>
         </div>
 
-        {/* Facilities Showcase */}
-        <div className="mb-16">
-          <h2 className="text-3xl font-bold text-white text-center mb-12">Our World-Class Facilities</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <div className="relative overflow-hidden rounded-xl">
-              <img 
-                src="/Gym.jpg" 
-                alt="Main Gym Floor" 
-                className="w-full h-64 object-cover hover:scale-110 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-                <h3 className="text-white text-2xl font-bold">Main Gym Floor</h3>
-              </div>
-            </div>
-            <div className="relative overflow-hidden rounded-xl">
-              <img 
-                src="/Equipment.jpg" 
-                alt="Equipment" 
-                className="w-full h-64 object-cover hover:scale-110 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-                <h3 className="text-white text-2xl font-bold">Equipment</h3>
-              </div>
-            </div>
-            <div className="relative overflow-hidden rounded-xl">
-              <img 
-                src="/Cardio.jpg" 
-                alt="Cardio section" 
-                className="w-full h-64 object-cover hover:scale-110 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-                <h3 className="text-white text-2xl font-bold">Cardio</h3>
-              </div>
-            </div>
-            <div className="relative overflow-hidden rounded-xl">
-              <img 
-                src="/Health & Fitness.jpg" 
-                alt="Wellness Center" 
-                className="w-full h-64 object-cover hover:scale-110 transition-transform duration-300"
-              />
-              <div className="absolute inset-0 bg-black bg-opacity-40 flex items-center justify-center">
-                <h3 className="text-white text-2xl font-bold">Wellness & Recovery Center</h3>
-              </div>
-            </div>
-          </div>
-        </div>
-
+        
         {/* Team Section */}
         <div className="text-center">
-          <h2 className="text-3xl font-bold text-white mb-6">Our Commitment to Excellence</h2>
-          <p className="text-xl text-gray-400 mb-12 max-w-3xl mx-auto">
+          <h2 className="text-3xl font-bold text-white mt-12 mb-6">Our Commitment to Excellence</h2>
+          <p className="text-xl text-gray-400 max-w-3xl mx-auto mb-12">
             Every member of our team is dedicated to providing you with the best possible fitness experience. 
             From our front desk staff to our maintenance crew, everyone plays a vital role in your success.
           </p>
           
           <div className="relative overflow-hidden rounded-xl">
             <img 
-              src="/Group_Persoanl_Trainer.jpg" 
+              src="/Group_Trainer.jpg" 
               alt="Our Training Team" 
               className="w-full h-96 object-cover"
             />

@@ -12,12 +12,38 @@ const Login = () => {
     e.preventDefault();
     login(email, password); // Mock login
     navigate('/');
+
+     // Redirect based on role
+    const role = email.startsWith('trainer')
+      ? 'trainer'
+      : email.startsWith('receptionist')
+      ? 'receptionist'
+      : email.startsWith('admin')
+      ? 'admin'
+      : 'member';
+
+    switch (role) {
+      case 'trainer':
+        navigate('/trainer-dashboard');
+        break;
+      case 'receptionist':
+        navigate('/receptionist-dashboard');
+        break;
+      case 'admin':
+        navigate('/admin-dashboard');
+        break;
+      default:
+        navigate('/member-dashboard');
+    }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md bg-gray-900 p-8 rounded-lg">
-        <h2 className="text-2xl font-bold text-white mb-6">Login</h2>
+        <div className="text-center mb-4">
+          <h2 className="text-3xl font-bold text-white">Welcome Back</h2>
+          <p className="mt-2 text-gray-400">Sign in to your account</p>
+        </div>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
             type="email"
