@@ -65,6 +65,7 @@ db.booking.hasOne(db.payment, { foreignKey: 'bookingId' });
 
 db.payment.belongsTo(db.member, { foreignKey: 'memberId' });
 db.payment.belongsTo(db.booking, { foreignKey: 'bookingId' });
+db.payment.belongsTo(db.membershipPlan,{ foreignKey: 'membershipPlanId'});
 
 db.attendance.belongsTo(db.member, { foreignKey: 'memberId' });
 db.attendance.belongsTo(db.class, { foreignKey: 'classId' });
