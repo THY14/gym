@@ -5,7 +5,7 @@ import { serveSwagger, setupSwagger } from './config/swagger.js';
 import  AuthRoutes  from './routes/auth.routes.js';
 import MemberRoutes from './routes/member.routes.js';
 import UserRoutes from './routes/user.routes.js';
-import MembershipsRoutes from './routes/memberships.routes.js'
+import MembershipsRoutes from './routes/membership.routes.js';
 import ClassesRoutes from './routes/class.routes.js';
 dotenv.config();
 
