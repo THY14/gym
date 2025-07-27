@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { authAPI } from '../services/api';
 
 const AuthContext = createContext();
 
@@ -11,86 +12,84 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
-  // Load user from localStorage on mount
   useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem('user');
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
+    const loadUser = async () => {
+      try {
+        const savedUser = localStorage.getItem('user');
+        const token = localStorage.getItem('token');
+        if (savedUser && token) {
+          const response = await authAPI.getProfile();
+          setUser(response.data.data);
+          localStorage.setItem('user', JSON.stringify(response.data.data));
+        }
+      } catch (err) {
+        console.error('Error loading user:', err);
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error loading user from localStorage:', error);
-    }
-    setLoading(false);
-    console.log('AuthProvider - Loading complete');
+    };
+    loadUser();
   }, []);
 
-  // Update user and persist to localStorage
-  const updateUser = (newUser) => {
+  const login = async (email, password) => {
     try {
-      setUser(newUser);
-      if (newUser) {
-        localStorage.setItem('user', JSON.stringify(newUser));
-      } else {
-        localStorage.removeItem('user');
-      }
-    } catch (error) {
-      console.error('Error updating user:', error);
-      throw new Error('Failed to update user');
+      setError(null);
+      const response = await authAPI.login({ email, password });
+      const { data: { user, token } } = response;
+      setUser(user);
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('token', token);
+      return user;
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed');
+      throw err;
     }
   };
 
-  // Fake login function with complete user object
-  const login = (email, password) => {
-    let role = 'member';
-    if (email.endsWith('@trainer.com')) {
-      role = 'trainer';
-    } else if (email.endsWith('@receptionist.com')) {
-      role = 'receptionist';
-    } else if (email.endsWith('@admin.com')) {
-      role = 'admin';
+  const register = async (userData) => {
+    try {
+      setError(null);
+      const response = await authAPI.register(userData);
+      const { data: { user, token } } = response;
+      setUser(user);
+      localStorage.setItem('user', JSON.stringify(user));
+      localStorage.setItem('token', token);
+      return user;
+    } catch (err) {
+      setError(err.response?.data?.message || 'Registration failed');
+      throw err;
     }
-
-    const fakeUser = {
-      firstName: 'Test',
-      lastName: role.charAt(0).toUpperCase() + role.slice(1),
-      email,
-      role,
-      bio: '',
-      specialties: '',
-      certifications: '',
-      phoneNumber: '',
-      specialization: '',
-      availability: '',
-      profileImage: 'https://via.placeholder.com/150',
-    };
-    updateUser(fakeUser);
   };
 
-  // Register a new user
-  const register = (data) => {
-    const newUser = {
-      ...data,
-      role: 'member',
-      bio: data.bio || '',
-      specialties: data.specialties || '',
-      certifications: data.certifications || '',
-      phoneNumber: data.phoneNumber || '',
-      specialization: data.specialization || '',
-      availability: data.availability || '',
-      profileImage: data.profileImage || 'https://via.placeholder.com/150',
-    };
-    updateUser(newUser);
+  const logout = async () => {
+    try {
+      setUser(null);
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+    } catch (err) {
+      console.error('Error during logout:', err);
+    }
   };
 
-  // Logout function
-  const logout = () => {
-    updateUser(null);
+  const updateUser = async (data) => {
+    try {
+      setError(null);
+      const response = await authAPI.updateProfile(data);
+      setUser(response.data.data);
+      localStorage.setItem('user', JSON.stringify(response.data.data));
+      return response.data.data;
+    } catch (err) {
+      setError(err.response?.data?.message || 'Failed to update profile');
+      throw err;
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, register, logout, setUser: updateUser }}>
+    <AuthContext.Provider value={{ user, loading, error, login, register, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

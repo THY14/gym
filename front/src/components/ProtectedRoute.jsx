@@ -1,6 +1,7 @@
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import LoadingSpinner from './LoadingSpinner';
 
 // This component protects routes based on login status and allowed roles
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -8,7 +9,11 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   
   // Wait until user status is checked
   if (loading) {
-    return <div className="text-center p-4">Loading...</div>;
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
   }
 
   // If no user, redirect to login

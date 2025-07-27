@@ -1,15 +1,15 @@
 export const checkRole = (roles) => {
-    return (req, res, next) => {
-        const userType = req.user?.userType ;
+  return (req, res, next) => {
+    const role = req.user?.role;
 
-        if (!userType) {
-            return res.status(403).json({ message: 'Access denied. No role found.' });
-        }
+    if (!role) {
+      return res.status(403).json({ message: 'Access denied. No role found.', error: 'Missing role' });
+    }
 
-        if (roles.includes(userType)) {
-            return next();
-        } else {
-            return res.status(403).json({ message: 'Access denied. Insufficient permissions.' });
-        }
-    };
-}
+    if (roles.includes(role)) {
+      return next();
+    } else {
+      return res.status(403).json({ message: 'Access denied. Insufficient permissions.', error: `Role ${role} not allowed` });
+    }
+  };
+};

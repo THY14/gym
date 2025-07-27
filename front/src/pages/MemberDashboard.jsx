@@ -1,12 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { authAPI, bookingsAPI, paymentsAPI, progressAPI } from '../services/api';
 import { Calendar, CreditCard, User, Activity, Clock, DollarSign, MapPin, Trash2, Pencil } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
 
-// MemberDashboard component with reverted Classes tab, updated Profile, and improved payment flow
+// MemberDashboard component with backend-integrated Classes, Progress, Payments, and Profile
 const MemberDashboard = () => {
-  const { user, setUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
   const [successMessage, setSuccessMessage] = useState(null);
+  const [classes, setClasses] = useState([]);
+  const [progress, setProgress] = useState([]);
+  const [payments, setPayments] = useState([]);
+  const [userSettings, setUserSettings] = useState(null);
+  const [classesLoading, setClassesLoading] = useState(false);
+  const [progressLoading, setProgressLoading] = useState(false);
+  const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [classesError, setClassesError] = useState(null);
+  const [progressError, setProgressError] = useState(null);
+  const [paymentsError, setPaymentsError] = useState(null);
+  const [settingsError, setSettingsError] = useState(null);
 
   // Auto-dismiss success message after 3 seconds
   useEffect(() => {
@@ -16,61 +31,110 @@ const MemberDashboard = () => {
     }
   }, [successMessage]);
 
+  // Fetch data
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setClassesLoading(true);
+        const classesResponse = await bookingsAPI.getUserBookings();
+        setClasses(classesResponse.data.data || []);
+        setClassesLoading(false);
+      } catch (err) {
+        setClassesError(err.response?.data?.message || 'Failed to fetch classes');
+        setClassesLoading(false);
+      }
+
+      try {
+        setProgressLoading(true);
+        const progressResponse = await progressAPI.getAttendance();
+        setProgress(progressResponse.data.data || []);
+        setProgressLoading(false);
+      } catch (err) {
+        setProgressError(err.response?.data?.message || 'Failed to fetch progress');
+        setProgressLoading(false);
+      }
+
+      try {
+        setPaymentsLoading(true);
+        const paymentsResponse = await paymentsAPI.getUserPayments();
+        setPayments(paymentsResponse.data.data || []);
+        setPaymentsLoading(false);
+      } catch (err) {
+        setPaymentsError(err.response?.data?.message || 'Failed to fetch payments');
+        setPaymentsLoading(false);
+      }
+
+      try {
+        setSettingsLoading(true);
+        const settingsResponse = await authAPI.getProfile();
+        setUserSettings(settingsResponse.data.data);
+        setSettingsLoading(false);
+      } catch (err) {
+        setSettingsError(err.response?.data?.message || 'Failed to fetch user settings');
+        setSettingsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Refetch functions
+  const refetchClasses = async () => {
+    try {
+      setClassesLoading(true);
+      const response = await bookingsAPI.getUserBookings();
+      setClasses(response.data.data || []);
+      setClassesLoading(false);
+    } catch (err) {
+      setClassesError(err.response?.data?.message || 'Failed to fetch classes');
+      setClassesLoading(false);
+    }
+  };
+
+  const refetchProgress = async () => {
+    try {
+      setProgressLoading(true);
+      const response = await progressAPI.getAttendance();
+      setProgress(response.data.data || []);
+      setProgressLoading(false);
+    } catch (err) {
+      setProgressError(err.response?.data?.message || 'Failed to fetch progress');
+      setProgressLoading(false);
+    }
+  };
+
+  const refetchPayments = async () => {
+    try {
+      setPaymentsLoading(true);
+      const response = await paymentsAPI.getUserPayments();
+      setPayments(response.data.data || []);
+      setPaymentsLoading(false);
+    } catch (err) {
+      setPaymentsError(err.response?.data?.message || 'Failed to fetch payments');
+      setPaymentsLoading(false);
+    }
+  };
+
+  const refetchSettings = async () => {
+    try {
+      setSettingsLoading(true);
+      const response = await authAPI.getProfile();
+      setUserSettings(response.data.data);
+      setSettingsLoading(false);
+    } catch (err) {
+      setSettingsError(err.response?.data?.message || 'Failed to fetch user settings');
+      setSettingsLoading(false);
+    }
+  };
+
   // Membership types with prices and durations (in days)
   const membershipTypes = [
-    { type: '1 Month', price: 30, duration: 30 },
-    { type: '3 Months', price: 80, duration: 90 },
-    { type: '6 Months', price: 150, duration: 180 },
-    { type: '1 Year', price: 280, duration: 365 },
-    { type: 'Individual Personal Trainer', price: 50, duration: 1 },
-    { type: 'Group Personal Trainer', price: 30, duration: 1 },
+    { type: '1 Month', price: 35, duration: 30 },
+    { type: '3 Months', price: 75, duration: 90 },
+    { type: '6 Months', price: 115, duration: 180 },
+    { type: '1 Year', price: 175, duration: 365 },
+    { type: 'Individual Personal Trainer', price: 250, duration: 30 },
+    { type: 'Group Personal Trainer', price: 180, duration: 30 },
   ];
-
-  // Mock data for classes
-  const [classes, setClasses] = useState(() => {
-    const savedClasses = localStorage.getItem('memberClasses');
-    return savedClasses
-      ? JSON.parse(savedClasses)
-      : [
-          {
-            id: 1,
-            name: 'Strength Training',
-            time: '6:00 PM - 7:00 PM',
-            availableDays: ['Monday', 'Wednesday', 'Friday'],
-            location: 'Downtown Location',
-            duration: 60,
-            enrolled: false,
-          },
-          {
-            id: 2,
-            name: 'Yoga & Wellness',
-            time: '7:00 AM - 8:00 AM',
-            availableDays: ['Tuesday', 'Thursday', 'Saturday'],
-            location: 'Uptown Studio',
-            duration: 60,
-            enrolled: true,
-          },
-        ];
-  });
-
-  // State for progress tracking
-  const [progress, setProgress] = useState(() => {
-    const savedProgress = localStorage.getItem('progress');
-    return savedProgress
-      ? JSON.parse(savedProgress)
-      : [
-          {
-            id: 1,
-            date: '2025-07-20',
-            workout: 'Strength',
-            weight: 50,
-            reps: 12,
-            sets: 3,
-            duration: 45,
-            notes: 'Felt strong today',
-          },
-        ];
-  });
 
   // State for new/edit progress log
   const [newProgress, setNewProgress] = useState({
@@ -86,29 +150,6 @@ const MemberDashboard = () => {
 
   // Workout types for dropdown
   const workoutTypes = ['Strength', 'Cardio', 'Yoga', 'Pilates', 'HIIT', 'Other'];
-
-  // State for monthly session goal
-  const [monthlyGoal, setMonthlyGoal] = useState(() => {
-    return localStorage.getItem('monthlyGoal') ? Number(localStorage.getItem('monthlyGoal')) : 12;
-  });
-
-  // State for payments
-  const [payments, setPayments] = useState(() => {
-    const savedPayments = localStorage.getItem('payments');
-    return savedPayments
-      ? JSON.parse(savedPayments)
-      : [
-          {
-            id: 1,
-            amount: 80.0,
-            description: '3 Month Membership',
-            membershipType: '3 Months',
-            date: '2025-05-15',
-            method: 'Credit Card',
-            status: 'Completed',
-          },
-        ];
-  });
 
   // State for new payment method
   const [newPaymentMethod, setNewPaymentMethod] = useState({
@@ -137,7 +178,7 @@ const MemberDashboard = () => {
       .filter((p) => p.status === 'Completed' && p.membershipType)
       .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
 
-    if (!latestPayment) return { type: '1 Month', nextPaymentDate: null }; // Default to 1 Month if no payment
+    if (!latestPayment) return { type: '1 Month', nextPaymentDate: null };
 
     const paymentDate = new Date(latestPayment.date);
     const membership = membershipTypes.find((m) => m.type === latestPayment.membershipType);
@@ -145,7 +186,7 @@ const MemberDashboard = () => {
 
     const endDate = new Date(paymentDate);
     endDate.setDate(endDate.getDate() + membership.duration);
-    const currentDate = new Date('2025-07-23'); // Current date: July 23, 2025
+    const currentDate = new Date();
 
     let nextPaymentDate = null;
     if (currentDate <= endDate) {
@@ -164,51 +205,36 @@ const MemberDashboard = () => {
   // Update user membership type
   useEffect(() => {
     if (activeMembership !== user?.membershipType) {
-      setUser((prev) => ({ ...prev, membershipType: activeMembership }));
+      updateUser({ ...user, membershipType: activeMembership });
     }
-  }, [activeMembership, setUser]);
-
-  // Persist data to localStorage
-  useEffect(() => {
-    localStorage.setItem('memberClasses', JSON.stringify(classes));
-  }, [classes]);
-
-  useEffect(() => {
-    localStorage.setItem('progress', JSON.stringify(progress));
-  }, [progress]);
-
-  useEffect(() => {
-    localStorage.setItem('payments', JSON.stringify(payments));
-  }, [payments]);
-
-  useEffect(() => {
-    localStorage.setItem('monthlyGoal', monthlyGoal);
-  }, [monthlyGoal]);
+  }, [activeMembership, user, updateUser]);
 
   // Handle class booking
-  const handleBookClass = (classId) => {
-    setClasses((prev) =>
-      prev.map((cls) =>
-        cls.id === classId ? { ...cls, enrolled: true } : cls
-      )
-    );
-    setSuccessMessage('Class booked successfully.');
+  const handleBookClass = async (classId) => {
+    try {
+      await bookingsAPI.create({ classId, enrolled: true });
+      setSuccessMessage('Class booked successfully.');
+      refetchClasses();
+    } catch (err) {
+      setSuccessMessage('Failed to book class. Please try again.');
+    }
   };
 
   // Handle class cancellation
-  const handleCancelClass = (classId) => {
+  const handleCancelClass = async (classId) => {
     if (window.confirm('Are you sure you want to cancel this class?')) {
-      setClasses((prev) =>
-        prev.map((cls) =>
-          cls.id === classId ? { ...cls, enrolled: false } : cls
-        )
-      );
-      setSuccessMessage('Class cancelled successfully.');
+      try {
+        await bookingsAPI.cancel(classId);
+        setSuccessMessage('Class cancelled successfully.');
+        refetchClasses();
+      } catch (err) {
+        setSuccessMessage('Failed to cancel class. Please try again.');
+      }
     }
   };
 
   // Handle adding/editing progress log
-  const handleAddProgress = (e) => {
+  const handleAddProgress = async (e) => {
     e.preventDefault();
     if (!newProgress.workout && !newProgress.customWorkout) {
       setSuccessMessage('Please select or enter a workout type.');
@@ -228,27 +254,20 @@ const MemberDashboard = () => {
       notes: newProgress.notes || '',
     };
 
-    if (editProgressId) {
-      setProgress((prev) =>
-        prev.map((entry) =>
-          entry.id === editProgressId ? { ...entry, ...progressData } : entry
-        )
-      );
-      setSuccessMessage('Progress updated successfully.');
-    } else {
-      const newId = progress.length ? Math.max(...progress.map((p) => p.id)) + 1 : 1;
-      setProgress((prev) => [
-        ...prev,
-        {
-          id: newId,
-          date: new Date().toISOString().split('T')[0],
-          ...progressData,
-        },
-      ]);
-      setSuccessMessage('Progress logged successfully.');
+    try {
+      if (editProgressId) {
+        await progressAPI.update(editProgressId, progressData);
+        setSuccessMessage('Progress updated successfully.');
+      } else {
+        await progressAPI.create({ ...progressData, date: new Date().toISOString().split('T')[0] });
+        setSuccessMessage('Progress logged successfully.');
+      }
+      setNewProgress({ workout: '', customWorkout: '', weight: '', reps: '', sets: '', duration: '', notes: '' });
+      setEditProgressId(null);
+      refetchProgress();
+    } catch (err) {
+      setSuccessMessage('Failed to log progress. Please try again.');
     }
-    setNewProgress({ workout: '', customWorkout: '', weight: '', reps: '', sets: '', duration: '', notes: '' });
-    setEditProgressId(null);
   };
 
   // Handle editing progress entry
@@ -266,15 +285,20 @@ const MemberDashboard = () => {
   };
 
   // Handle deleting progress entry
-  const handleDeleteProgress = (id) => {
+  const handleDeleteProgress = async (id) => {
     if (window.confirm('Are you sure you want to delete this progress entry?')) {
-      setProgress((prev) => prev.filter((entry) => entry.id !== id));
-      setSuccessMessage('Progress entry deleted successfully.');
+      try {
+        await progressAPI.delete(id);
+        setSuccessMessage('Progress entry deleted successfully.');
+        refetchProgress();
+      } catch (err) {
+        setSuccessMessage('Failed to delete progress entry. Please try again.');
+      }
     }
   };
 
   // Handle adding payment method
-  const handleAddPaymentMethod = (e) => {
+  const handleAddPaymentMethod = async (e) => {
     e.preventDefault();
     if (!newPaymentMethod.cardNumber || !newPaymentMethod.expiry || !newPaymentMethod.cvv) {
       setSuccessMessage('Please fill in all payment method fields.');
@@ -295,25 +319,25 @@ const MemberDashboard = () => {
       setSuccessMessage('Please enter a valid CVV (3 or 4 digits).');
       return;
     }
-    const newId = payments.length ? Math.max(...payments.map((p) => p.id)) + 1 : 1;
-    setPayments((prev) => [
-      ...prev,
-      {
-        id: newId,
+    try {
+      await paymentsAPI.create({
         amount: 0,
         description: 'New Payment Method Added',
         membershipType: null,
         date: new Date().toISOString().split('T')[0],
         method: `Card ending ${newPaymentMethod.cardNumber.slice(-4)}`,
         status: 'Pending',
-      },
-    ]);
-    setNewPaymentMethod({ cardNumber: '', expiry: '', cvv: '' });
-    setSuccessMessage('Payment method added successfully.');
+      });
+      setNewPaymentMethod({ cardNumber: '', expiry: '', cvv: '' });
+      setSuccessMessage('Payment method added successfully.');
+      refetchPayments();
+    } catch (err) {
+      setSuccessMessage('Failed to add payment method. Please try again.');
+    }
   };
 
   // Handle purchasing membership
-  const handlePurchaseMembership = (e) => {
+  const handlePurchaseMembership = async (e) => {
     e.preventDefault();
     const hasPaymentMethod = payments.some((p) => p.method.includes('Card ending') && p.status === 'Pending');
     if (!hasPaymentMethod) {
@@ -321,21 +345,21 @@ const MemberDashboard = () => {
       return;
     }
     const membership = membershipTypes.find((m) => m.type === selectedMembership);
-    const newId = payments.length ? Math.max(...payments.map((p) => p.id)) + 1 : 1;
-    setPayments((prev) => [
-      ...prev,
-      {
-        id: newId,
+    try {
+      await paymentsAPI.create({
         amount: membership.price,
         description: `${membership.type} Membership`,
         membershipType: membership.type,
         date: new Date().toISOString().split('T')[0],
         method: payments.find((p) => p.method.includes('Card ending'))?.method || 'Credit Card',
         status: 'Completed',
-      },
-    ]);
-    setUser((prev) => ({ ...prev, membershipType: membership.type }));
-    setSuccessMessage('Membership purchased successfully.');
+      });
+      await updateUser({ ...user, membershipType: membership.type });
+      setSuccessMessage('Membership purchased successfully.');
+      refetchPayments();
+    } catch (err) {
+      setSuccessMessage('Failed to purchase membership. Please try again.');
+    }
   };
 
   // Handle profile updates
@@ -371,25 +395,28 @@ const MemberDashboard = () => {
         setSuccessMessage('Please enter a valid phone number (10-15 digits).');
         return;
       }
-      let updatedUser = { ...user, ...editProfile, membershipType: activeMembership };
+      let profileImage = user?.profileImage || 'https://via.placeholder.com/150';
       if (editProfile.profileImage) {
-        const reader = new FileReader();
-        const base64Image = await new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = () => reject(new Error('Failed to read image file'));
-          reader.readAsDataURL(editProfile.profileImage);
-        });
-        updatedUser.profileImage = base64Image;
-      } else {
-        updatedUser.profileImage = user?.profileImage || 'https://via.placeholder.com/150';
+        const formData = new FormData();
+        formData.append('profileImage', editProfile.profileImage);
+        const uploadResponse = await authAPI.uploadProfileImage(formData);
+        profileImage = uploadResponse.data.data.profileImage;
       }
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      const updatedUser = {
+        firstName: editProfile.firstName,
+        lastName: editProfile.lastName,
+        email: editProfile.email,
+        phoneNumber: editProfile.phoneNumber,
+        fitnessGoals: editProfile.fitnessGoals,
+        profileImage,
+        membershipType: activeMembership,
+      };
+      await authAPI.updateProfile(updatedUser);
+      updateUser(updatedUser);
       setEditProfile((prev) => ({ ...prev, profileImage: null }));
-      setPreviewImage(updatedUser.profileImage);
+      setPreviewImage(profileImage);
       setSuccessMessage('Profile updated successfully.');
     } catch (error) {
-      console.error('Profile update error:', error.message);
       setSuccessMessage(`Failed to update profile: ${error.message}. Please try again.`);
     }
   };
@@ -407,7 +434,7 @@ const MemberDashboard = () => {
   };
 
   // Calculate progress metrics
-  const currentMonth = '2025-07';
+  const currentMonth = new Date().toISOString().slice(0, 7);
   const monthlyProgress = progress.filter((entry) => entry.date.startsWith(currentMonth));
   const totalSessions = monthlyProgress.length;
   const workoutTypeCounts = monthlyProgress.reduce((acc, entry) => {
@@ -417,6 +444,7 @@ const MemberDashboard = () => {
   const workoutTypeSummary = Object.entries(workoutTypeCounts)
     .map(([type, count]) => `${type} (${count})`)
     .join(', ');
+  const monthlyGoal = userSettings?.monthlyGoal || 12;
   const progressPercentage = totalSessions > 0 ? Math.min((totalSessions / monthlyGoal) * 100, 100) : 0;
 
   // Calculate total amount spent on memberships
@@ -432,8 +460,8 @@ const MemberDashboard = () => {
     return acc;
   }, {});
 
-  // Mock today's schedule (Wednesday, July 23, 2025)
-  const today = 'Wednesday';
+  // Today's schedule
+  const today = new Date().toLocaleDateString('en-US', { weekday: 'long' });
   const todayClasses = classes.filter((cls) => (cls.availableDays || []).includes(today) && cls.enrolled);
 
   const tabs = [
@@ -444,46 +472,66 @@ const MemberDashboard = () => {
     { id: 'profile', label: 'Profile', icon: User },
   ];
 
-  return (
-    <div className="min-h-screen pt-16 py-8 bg-gray-900">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Success Message */}
-        {successMessage && (
-          <div className="fixed inset-0 flex items-center justify-center z-50">
-            <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg animate-fade-in-out max-w-md text-center">
-              {successMessage}
-            </div>
-          </div>
-        )}
-
-        {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white">Welcome back, {user?.firstName || 'Member'}!</h1>
-          <p className="text-gray-400 mt-2">Manage your fitness journey from your dashboard</p>
-        </div>
-
-        {/* Tab Navigation */}
-        <div className="bg-gray-900 rounded-lg p-1 mb-8">
-          <div className="flex flex-wrap space-x-1">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center space-x-2 px-4 py-3 rounded-md font-medium transition-colors ${
-                    activeTab === tab.id
-                      ? 'bg-red-600 text-white'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                  }`}
-                >
-                  <Icon className="h-5 w-5" />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
+return (
+  <div className="min-h-screen pt-16 py-8 bg-gray-900">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Success Message */}
+      {successMessage && (
+        <div className="fixed inset-0 flex items-center justify-center z-50">
+          <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg animate-fade-in-out max-w-md text-center">
+            {successMessage}
           </div>
         </div>
+      )}
+
+      {/* Error Display */}
+      {(classesError || progressError || paymentsError || settingsError) && (
+        <ErrorMessage
+          message={classesError || progressError || paymentsError || settingsError}
+          onRetry={() => {
+            if (classesError) refetchClasses();
+            if (progressError) refetchProgress();
+            if (paymentsError) refetchPayments();
+            if (settingsError) refetchSettings();
+          }}
+        />
+      )}
+
+      {/* Loading Spinner */}
+      {(classesLoading || progressLoading || paymentsLoading || settingsLoading) && (
+        <div className="flex justify-center items-center my-8">
+          <LoadingSpinner size="lg" />
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl font-bold text-white">Welcome back, {user?.firstName || 'Member'}!</h1>
+        <p className="text-gray-400 mt-2">Manage your fitness journey from your dashboard</p>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="bg-gray-900 rounded-lg p-1 mb-8">
+        <div className="flex flex-wrap space-x-1">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center space-x-2 px-4 py-3 rounded-md font-medium transition-colors ${
+                  activeTab === tab.id
+                    ? 'bg-red-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
+              >
+                <Icon className="h-5 w-5" />
+                <span>{tab.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
         {/* Tab Content */}
         <div className="bg-gray-900 rounded-xl p-6">

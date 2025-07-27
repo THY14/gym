@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useApi, useAsyncAction } from '../hooks/useApi';
+import { membershipsAPI, trainersAPI, bookingsAPI, paymentsAPI } from '../services/api';
 import {
   Users,
   Calendar,
@@ -13,142 +15,8 @@ import {
   User,
   Briefcase,
 } from 'lucide-react';
-
-// Mock data for frontend-only, single location ("Main Gym")
-const initialData = {
-  members: [
-    {
-      id: '1247',
-      name: 'John Doe',
-      membershipType: '1 Year',
-      lastVisit: 'Yesterday 3:00 PM',
-      status: 'Active',
-      location: 'main',
-      expiryDate: '2025-12-31',
-      email: 'john.doe@example.com',
-      phone: '555-1234',
-    },
-    {
-      id: '1248',
-      name: 'Jane Smith',
-      membershipType: '3 Month',
-      lastVisit: 'Today 1:00 PM',
-      status: 'Active',
-      location: 'main',
-      expiryDate: '2025-07-25',
-      email: 'jane.smith@example.com',
-      phone: '555-5678',
-    },
-  ],
-  trainers: [
-    {
-      id: 't001',
-      name: 'Sarah Johnson',
-      email: 'sarah.j@example.com',
-      phone: '555-9012',
-      lastCheckIn: 'Yesterday 9:00 AM',
-      status: 'Active',
-      location: 'main',
-    },
-    {
-      id: 't002',
-      name: 'Emma Chen',
-      email: 'emma.c@example.com',
-      phone: '555-3456',
-      lastCheckIn: 'Today 8:00 AM',
-      status: 'Active',
-      location: 'main',
-    },
-  ],
-  checkins: [
-    {
-      id: 1,
-      memberId: '1247',
-      memberName: 'John Doe',
-      membershipType: '1 Year',
-      time: '2:30 PM',
-      status: 'Checked In',
-      duration: '1h 30m',
-      location: 'main',
-      gateStatus: 'Opened',
-    },
-    {
-      id: 2,
-      memberId: '1248',
-      memberName: 'Jane Smith',
-      membershipType: '3 Month',
-      time: '3:15 PM',
-      status: 'Checked In',
-      duration: '1h',
-      location: 'main',
-      gateStatus: 'Opened',
-    },
-  ],
-  trainerCheckins: [
-    {
-      id: 1,
-      trainerId: 't001',
-      trainerName: 'Sarah Johnson',
-      time: '9:00 AM',
-      status: 'Checked In',
-      duration: '8h',
-      location: 'main',
-      gateStatus: 'Opened',
-    },
-  ],
-  classes: [
-    {
-      id: 1,
-      className: 'Strength Training',
-      time: '6:00 PM',
-      instructor: 'Sarah Johnson',
-      duration: '60 min',
-      enrolled: 2,
-      capacity: 15,
-      location: 'main',
-      room: 'Room A',
-      attendees: ['1247', '1248'],
-      status: 'Scheduled',
-    },
-    {
-      id: 2,
-      className: 'Yoga',
-      time: '7:00 PM',
-      instructor: 'Emma Chen',
-      duration: '45 min',
-      enrolled: 1,
-      capacity: 12,
-      location: 'main',
-      room: 'Room B',
-      attendees: ['1247'],
-      status: 'Scheduled',
-    },
-  ],
-  payments: [
-    {
-      id: 1,
-      memberId: '1247',
-      memberName: 'John Doe',
-      amount: 199,
-      description: '3 Month Membership',
-      time: '2025-07-24 2:15 PM',
-      method: 'Credit Card',
-      status: 'Pending',
-      location: 'main',
-    },
-    {
-      id: 2,
-      memberId: '1248',
-      memberName: 'Jane Smith',
-      amount: 50,
-      description: 'Monthly Membership',
-      time: '2025-07-24 3:00 PM',
-      method: 'Cash',
-      status: 'Pending',
-      location: 'main',
-    },
-  ],
-};
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
 
 const ReceptDashboard = () => {
   const { user, updateUser } = useAuth();
@@ -157,25 +25,41 @@ const ReceptDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [paymentMemberId, setPaymentMemberId] = useState('');
   const [message, setMessage] = useState(null);
-  const [data, setData] = useState(() => {
-    const saved = localStorage.getItem('receptDashboardData');
-    try {
-      const parsed = saved ? JSON.parse(saved) : initialData;
-      return {
-        members: Array.isArray(parsed.members) ? parsed.members : initialData.members,
-        trainers: Array.isArray(parsed.trainers) ? parsed.trainers : initialData.trainers,
-        checkins: Array.isArray(parsed.checkins) ? parsed.checkins : initialData.checkins,
-        trainerCheckins: Array.isArray(parsed.trainerCheckins) ? parsed.trainerCheckins : initialData.trainerCheckins,
-        classes: Array.isArray(parsed.classes) ? parsed.classes : initialData.classes,
-        payments: Array.isArray(parsed.payments) ? parsed.payments : initialData.payments,
-      };
-    } catch (e) {
-      console.error('Failed to parse localStorage data:', e);
-      return initialData;
-    }
-  });
   const [editItem, setEditItem] = useState(null);
   const [profileImage, setProfileImage] = useState(user?.profileImage || '');
+  const { execute } = useAsyncAction();
+
+  // Fetch data using useApi hook
+  const { data: membersData, loading: membersLoading, error: membersError, refetch: refetchMembers } = useApi(
+    () => membershipsAPI.getAll(),
+    [selectedLocation]
+  );
+  const { data: trainersData, loading: trainersLoading, error: trainersError, refetch: refetchTrainers } = useApi(
+    () => trainersAPI.getAll(),
+    [selectedLocation]
+  );
+  const { data: checkinsData, loading: checkinsLoading, error: checkinsError, refetch: refetchCheckins } = useApi(
+    () => bookingsAPI.getUserBookings(),
+    [selectedLocation]
+  );
+  const { data: classesData, loading: classesLoading, error: classesError, refetch: refetchClasses } = useApi(
+    () => bookingsAPI.getAll(),
+    [selectedLocation]
+  );
+  const { data: paymentsData, loading: paymentsLoading, error: paymentsError, refetch: refetchPayments } = useApi(
+    () => paymentsAPI.getUserPayments(),
+    [selectedLocation]
+  );
+
+  // Combine API data into a single state
+  const data = {
+    members: membersData || [],
+    trainers: trainersData || [],
+    checkins: checkinsData?.filter(c => c.type === 'member') || [],
+    trainerCheckins: checkinsData?.filter(c => c.type === 'trainer') || [],
+    classes: classesData || [],
+    payments: paymentsData || [],
+  };
 
   // Clear message after 3 seconds
   useEffect(() => {
@@ -187,34 +71,28 @@ const ReceptDashboard = () => {
 
   // Auto-delete expired memberships
   useEffect(() => {
+    if (!membersData) return;
     const today = new Date().toISOString().split('T')[0];
-    const expiredMembers = (data.members || []).filter((m) => m.expiryDate < today && m.status === 'Active');
+    const expiredMembers = membersData.filter((m) => m.expiryDate < today && m.status === 'Active');
     if (expiredMembers.length > 0) {
-      setData((prev) => ({
-        ...prev,
-        members: (prev.members || []).map((m) =>
-          m.expiryDate < today ? { ...m, status: 'Expired' } : m
-        ),
-        checkins: (prev.checkins || []).filter((c) => !expiredMembers.some((m) => m.id === c.memberId)),
-        classes: (prev.classes || []).map((b) => ({
-          ...b,
-          attendees: (b.attendees || []).filter((id) => !expiredMembers.some((m) => m.id === id)),
-          enrolled: (b.attendees || []).filter((id) => !expiredMembers.some((m) => m.id === id)).length,
-        })),
-      }));
+      expiredMembers.forEach(async (member) => {
+        try {
+          await execute(() => membershipsAPI.update(member.id, { ...member, status: 'Expired' }));
+          refetchMembers();
+          refetchCheckins();
+          refetchClasses();
+        } catch (err) {
+          setMessage({ type: 'error', text: `Failed to update member ${member.name}` });
+        }
+      });
     }
-  }, [data.members]);
-
-  // Persist data to localStorage
-  useEffect(() => {
-    localStorage.setItem('receptDashboardData', JSON.stringify(data));
-  }, [data]);
+  }, [membersData, execute, refetchMembers, refetchCheckins, refetchClasses]);
 
   // Optimize member and trainer list rendering
   const filteredMembers = useMemo(() => {
-    const members = data.members || [];
-    if (!searchQuery.trim()) return members.filter((member) => member.location === 'main');
-    return members.filter(
+    if (!data.members) return [];
+    if (!searchQuery.trim()) return data.members.filter((member) => member.location === 'main');
+    return data.members.filter(
       (member) =>
         member.location === 'main' &&
         (member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -223,9 +101,9 @@ const ReceptDashboard = () => {
   }, [data.members, searchQuery]);
 
   const filteredTrainers = useMemo(() => {
-    const trainers = data.trainers || [];
-    if (!searchQuery.trim()) return trainers.filter((trainer) => trainer.location === 'main');
-    return trainers.filter(
+    if (!data.trainers) return [];
+    if (!searchQuery.trim()) return data.trainers.filter((trainer) => trainer.location === 'main');
+    return data.trainers.filter(
       (trainer) =>
         trainer.location === 'main' &&
         (trainer.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -234,111 +112,148 @@ const ReceptDashboard = () => {
   }, [data.trainers, searchQuery]);
 
   // CRUD Operations
-  const createItem = (type, newItem) => {
-    setData((prev) => ({
-      ...prev,
-      [type]: [...(prev[type] || []), { id: (prev[type] || []).length + 1, ...newItem, location: 'main' }],
-    }));
-  };
-
-  const updateItem = (type, updatedItem) => {
-    setData((prev) => {
-      const newData = {
-        ...prev,
-        [type]: (prev[type] || []).map((item) => (item.id === updatedItem.id ? updatedItem : item)),
-      };
+  const createItem = async (type, newItem) => {
+    try {
+      let response;
       if (type === 'members') {
-        newData.checkins = (prev.checkins || []).map((c) =>
-          c.memberId === updatedItem.id ? { ...c, memberName: updatedItem.name, membershipType: updatedItem.membershipType } : c
-        );
-        newData.payments = (prev.payments || []).map((p) =>
-          p.memberId === updatedItem.id ? { ...p, memberName: updatedItem.name } : p
-        );
-        newData.classes = (prev.classes || []).map((b) => ({
-          ...b,
-          attendees: (b.attendees || []).map((id) => (id === updatedItem.id ? updatedItem.id : id)),
-        }));
+        response = await execute(() => membershipsAPI.create(newItem));
       } else if (type === 'trainers') {
-        newData.trainerCheckins = (prev.trainerCheckins || []).map((c) =>
-          c.trainerId === updatedItem.id ? { ...c, trainerName: updatedItem.name } : c
-        );
-        newData.classes = (prev.classes || []).map((b) =>
-          b.instructor === prev[type].find((t) => t.id === updatedItem.id)?.name
-            ? { ...b, instructor: updatedItem.name }
-            : b
-        );
+        response = await execute(() => trainersAPI.create(newItem));
+      } else if (type === 'classes') {
+        response = await execute(() => bookingsAPI.create(newItem));
+      } else if (type === 'payments') {
+        response = await execute(() => paymentsAPI.create(newItem));
       }
-      return newData;
-    });
+      setMessage({ type: 'success', text: `${type.slice(0, -1)} created successfully` });
+      if (type === 'members') refetchMembers();
+      else if (type === 'trainers') refetchTrainers();
+      else if (type === 'classes') refetchClasses();
+      else if (type === 'payments') refetchPayments();
+      return response.data;
+    } catch (err) {
+      setMessage({ type: 'error', text: `Failed to create ${type.slice(0, -1)}` });
+    }
   };
 
-  const deleteItem = (type, id) => {
-    setData((prev) => {
-      const newData = {
-        ...prev,
-        [type]: (prev[type] || []).filter((item) => item.id !== id),
-      };
-      if (type === 'classes') {
-        newData.classes = (prev.classes || []).map((b) =>
-          b.id === id ? { ...b, status: 'Cancelled' } : b
-        );
+  const updateItem = async (type, updatedItem) => {
+    try {
+      let response;
+      if (type === 'members') {
+        response = await execute(() => membershipsAPI.update(updatedItem.id, updatedItem));
+      } else if (type === 'trainers') {
+        response = await execute(() => trainersAPI.update(updatedItem.id, updatedItem));
+      } else if (type === 'classes') {
+        response = await execute(() => bookingsAPI.update(updatedItem.id, updatedItem));
       }
-      return newData;
-    });
+      setMessage({ type: 'success', text: `${type.slice(0, -1)} updated successfully` });
+      if (type === 'members') refetchMembers();
+      else if (type === 'trainers') refetchTrainers();
+      else if (type === 'classes') refetchClasses();
+      return response.data;
+    } catch (err) {
+      setMessage({ type: 'error', text: `Failed to update ${type.slice(0, -1)}` });
+    }
+  };
+
+  const deleteItem = async (type, id) => {
+    try {
+      if (type === 'members') {
+        await execute(() => membershipsAPI.delete(id));
+        refetchMembers();
+      } else if (type === 'trainers') {
+        await execute(() => trainersAPI.delete(id));
+        refetchTrainers();
+      } else if (type === 'classes') {
+        await execute(() => bookingsAPI.cancel(id));
+        refetchClasses();
+      }
+      setMessage({ type: 'success', text: `${type.slice(0, -1)} deleted successfully` });
+    } catch (err) {
+      setMessage({ type: 'error', text: `Failed to delete ${type.slice(0, -1)}` });
+    }
   };
 
   // Check-in/out for members
-  const handleCheckIn = (memberId) => {
-    const member = (data.members || []).find((m) => m.id === memberId);
+  const handleCheckIn = async (memberId) => {
+    const member = data.members.find((m) => m.id === memberId);
     if (member && member.status === 'Active') {
-      createItem('checkins', {
-        memberId,
-        memberName: member.name,
-        membershipType: member.membershipType,
-        time: new Date().toLocaleTimeString(),
-        status: 'Checked In',
-        duration: '0m',
-        gateStatus: 'Opened',
-      });
-      updateItem('members', { ...member, lastVisit: new Date().toLocaleTimeString() });
-      setMessage({ type: 'success', text: `Successfully checked in ${member.name}` });
+      try {
+        await execute(() =>
+          bookingsAPI.create({
+            memberId,
+            type: 'member',
+            status: 'Checked In',
+            time: new Date().toISOString(),
+            gateStatus: 'Opened',
+            duration: '0m',
+          })
+        );
+        await execute(() => membershipsAPI.update(memberId, { ...member, lastVisit: new Date().toISOString() }));
+        refetchCheckins();
+        refetchMembers();
+        setMessage({ type: 'success', text: `Successfully checked in ${member.name}` });
+      } catch (err) {
+        setMessage({ type: 'error', text: 'Failed to check in member' });
+      }
     } else {
       setMessage({ type: 'error', text: 'Invalid Member ID or Inactive Member' });
     }
   };
 
-  const handleCheckOut = (checkinId) => {
-    const checkin = (data.checkins || []).find((c) => c.id === checkinId);
+  const handleCheckOut = async (checkinId) => {
+    const checkin = data.checkins.find((c) => c.id === checkinId);
     if (checkin) {
-      updateItem('checkins', { ...checkin, status: 'Checked Out', gateStatus: 'Opened', duration: '2h' });
-      setMessage({ type: 'success', text: `Successfully checked out ${checkin.memberName}` });
+      try {
+        await execute(() =>
+          bookingsAPI.update(checkinId, { ...checkin, status: 'Checked Out', gateStatus: 'Opened', duration: '2h' })
+        );
+        refetchCheckins();
+        setMessage({ type: 'success', text: `Successfully checked out ${checkin.memberName}` });
+      } catch (err) {
+        setMessage({ type: 'error', text: 'Failed to check out member' });
+      }
     }
   };
 
   // Check-in/out for trainers
-  const handleTrainerCheckIn = (trainerId) => {
-    const trainer = (data.trainers || []).find((t) => t.id === trainerId);
+  const handleTrainerCheckIn = async (trainerId) => {
+    const trainer = data.trainers.find((t) => t.id === trainerId);
     if (trainer && trainer.status === 'Active') {
-      createItem('trainerCheckins', {
-        trainerId,
-        trainerName: trainer.name,
-        time: new Date().toLocaleTimeString(),
-        status: 'Checked In',
-        duration: '0m',
-        gateStatus: 'Opened',
-      });
-      updateItem('trainers', { ...trainer, lastCheckIn: new Date().toLocaleTimeString() });
-      setMessage({ type: 'success', text: `Successfully checked in ${trainer.name}` });
+      try {
+        await execute(() =>
+          bookingsAPI.create({
+            trainerId,
+            type: 'trainer',
+            status: 'Checked In',
+            time: new Date().toISOString(),
+            gateStatus: 'Opened',
+            duration: '0m',
+          })
+        );
+        await execute(() => trainersAPI.update(trainerId, { ...trainer, lastCheckIn: new Date().toISOString() }));
+        refetchCheckins();
+        refetchTrainers();
+        setMessage({ type: 'success', text: `Successfully checked in ${trainer.name}` });
+      } catch (err) {
+        setMessage({ type: 'error', text: 'Failed to check in trainer' });
+      }
     } else {
       setMessage({ type: 'error', text: 'Invalid Trainer ID or Inactive Trainer' });
     }
   };
 
-  const handleTrainerCheckOut = (checkinId) => {
-    const checkin = (data.trainerCheckins || []).find((c) => c.id === checkinId);
+  const handleTrainerCheckOut = async (checkinId) => {
+    const checkin = data.trainerCheckins.find((c) => c.id === checkinId);
     if (checkin) {
-      updateItem('trainerCheckins', { ...checkin, status: 'Checked Out', gateStatus: 'Opened', duration: '8h' });
-      setMessage({ type: 'success', text: `Successfully checked out ${checkin.trainerName}` });
+      try {
+        await execute(() =>
+          bookingsAPI.update(checkinId, { ...checkin, status: 'Checked Out', gateStatus: 'Opened', duration: '8h' })
+        );
+        refetchCheckins();
+        setMessage({ type: 'success', text: `Successfully checked out ${checkin.trainerName}` });
+      } catch (err) {
+        setMessage({ type: 'error', text: 'Failed to check out trainer' });
+      }
     }
   };
 
@@ -381,27 +296,17 @@ const ReceptDashboard = () => {
   };
 
   // Save profile updates
-  const handleProfileSave = () => {
+  const handleProfileSave = async () => {
     const firstName = document.getElementById('profileFirstName')?.value;
     const lastName = document.getElementById('profileLastName')?.value;
     const email = document.getElementById('profileEmail')?.value;
     const phone = document.getElementById('profilePhone')?.value;
     if (firstName && lastName && email && phone) {
-      const updatedUser = {
-        ...user,
-        firstName,
-        lastName,
-        email,
-        phone,
-        profileImage: profileImage || '',
-      };
       try {
-        updateUser(updatedUser);
-        localStorage.setItem('user', JSON.stringify(updatedUser));
+        await updateUser({ firstName, lastName, email, phone, profileImage });
         setMessage({ type: 'success', text: 'Profile updated successfully' });
         setActiveTab('profile');
-      } catch (e) {
-        console.error('Failed to update profile:', e);
+      } catch (err) {
         setMessage({ type: 'error', text: 'Failed to update profile. Please try again.' });
       }
     } else {
@@ -412,7 +317,7 @@ const ReceptDashboard = () => {
   if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-black text-white">
-        <p>Loading dashboard...</p>
+        <LoadingSpinner size="lg" />
       </div>
     );
   }
@@ -469,8 +374,8 @@ const ReceptDashboard = () => {
             className="bg-gray-800 border border-gray-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-red-600 w-full sm:w-auto"
           >
             <option value="main">Main Gym</option>
-            <option value="loc1" disabled>Downtown Gym </option>
-            <option value="loc2" disabled>Suburban Gym </option>
+            <option value="loc1" disabled>Downtown Gym</option>
+            <option value="loc2" disabled>Suburban Gym</option>
           </select>
         </header>
 
@@ -482,6 +387,27 @@ const ReceptDashboard = () => {
             } text-white z-50`}
           >
             {message.text}
+          </div>
+        )}
+
+        {/* Error Display */}
+        {(membersError || trainersError || checkinsError || classesError || paymentsError) && (
+          <ErrorMessage
+            message={membersError || trainersError || checkinsError || classesError || paymentsError}
+            onRetry={() => {
+              if (membersError) refetchMembers();
+              if (trainersError) refetchTrainers();
+              if (checkinsError) refetchCheckins();
+              if (classesError) refetchClasses();
+              if (paymentsError) refetchPayments();
+            }}
+          />
+        )}
+
+        {/* Loading Spinner */}
+        {(membersLoading || trainersLoading || checkinsLoading || classesLoading || paymentsLoading) && (
+          <div className="flex justify-center items-center my-8">
+            <LoadingSpinner size="lg" />
           </div>
         )}
 
@@ -520,7 +446,6 @@ const ReceptDashboard = () => {
                   <span className="text-sm sm:text-base">Export Report</span>
                 </button>
               </div>
-
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {overviewCards.map(({ title, value, icon, onClick }) => (
                   <div
@@ -539,7 +464,6 @@ const ReceptDashboard = () => {
                   </div>
                 ))}
               </div>
-
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
                 <div>
                   <h3 className="text-lg sm:text-xl font-bold mb-4">Recent Check-ins</h3>
@@ -563,8 +487,7 @@ const ReceptDashboard = () => {
                       </span>
                     </div>
                   ))}
-                </div> 
-
+                </div>
                 <div>
                   <h3 className="text-lg sm:text-xl font-bold mb-4">Classes</h3>
                   {(data.classes || []).slice(0, 5).map((cls) => (
@@ -981,7 +904,7 @@ const ReceptDashboard = () => {
                     ))}
                   </select>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       const memberId = document.getElementById('paymentMemberId').value;
                       const amount = parseFloat(document.getElementById('paymentAmount').value);
                       const method = document.getElementById('paymentMethod').value;
@@ -989,20 +912,27 @@ const ReceptDashboard = () => {
                       const status = document.getElementById('paymentStatus').value;
                       const member = (data.members || []).find((m) => m.id === memberId);
                       if (member && amount > 0 && member.status === 'Active' && status !== 'Refund') {
-                        createItem('payments', {
-                          memberId,
-                          memberName: member.name,
-                          amount,
-                          description,
-                          time: new Date().toISOString().split('T')[0] + ' ' + new Date().toLocaleTimeString(),
-                          method,
-                          status,
-                        });
-                        setMessage({ type: 'success', text: `Payment assigned to ${member.name}` });
-                        setPaymentMemberId('');
-                        document.getElementById('paymentAmount').value = '';
-                        document.getElementById('paymentDescription').value = '';
-                        document.getElementById('paymentStatus').value = 'Pending';
+                        try {
+                          await execute(() =>
+                            paymentsAPI.create({
+                              memberId,
+                              memberName: member.name,
+                              amount,
+                              description,
+                              time: new Date().toISOString(),
+                              method,
+                              status,
+                            })
+                          );
+                          setMessage({ type: 'success', text: `Payment assigned to ${member.name}` });
+                          setPaymentMemberId('');
+                          document.getElementById('paymentAmount').value = '';
+                          document.getElementById('paymentDescription').value = '';
+                          document.getElementById('paymentStatus').value = 'Pending';
+                          refetchPayments();
+                        } catch (err) {
+                          setMessage({ type: 'error', text: 'Failed to assign payment' });
+                        }
                       } else {
                         setMessage({
                           type: 'error',
@@ -1275,7 +1205,7 @@ const ReceptDashboard = () => {
                     Cancel
                   </button>
                   <button
-                    onClick={() => {
+                    onClick={async () => {
                       if (editItem.type === 'members') {
                         const name = document.getElementById('editMemberName').value;
                         const membershipType = document.getElementById('editMemberType').value;
@@ -1294,15 +1224,17 @@ const ReceptDashboard = () => {
                             lastVisit: editItem.item?.lastVisit || 'Never',
                             status: 'Active',
                           };
-                          if (editItem.item) {
-                            updateItem('members', newItem);
-                            setMessage({ type: 'success', text: `Member ${name} updated successfully` });
-                          } else {
-                            createItem('members', newItem);
-                            setMessage({ type: 'success', text: `Member ${name} added successfully` });
+                          try {
+                            if (editItem.item) {
+                              await updateItem('members', newItem);
+                            } else {
+                              await createItem('members', newItem);
+                            }
+                            setEditItem(null);
+                            setActiveTab('members');
+                          } catch (err) {
+                            setMessage({ type: 'error', text: 'Please fill in all fields' });
                           }
-                          setEditItem(null);
-                          setActiveTab('members');
                         } else {
                           setMessage({ type: 'error', text: 'Please fill in all fields' });
                           return;
@@ -1322,15 +1254,17 @@ const ReceptDashboard = () => {
                             location: 'main',
                             lastCheckIn: editItem.item?.lastCheckIn || 'Never',
                           };
-                          if (editItem.item) {
-                            updateItem('trainers', newItem);
-                            setMessage({ type: 'success', text: `Trainer ${name} updated successfully` });
-                          } else {
-                            createItem('trainers', newItem);
-                            setMessage({ type: 'success', text: `Trainer ${name} added successfully` });
+                          try {
+                            if (editItem.item) {
+                              await updateItem('trainers', newItem);
+                            } else {
+                              await createItem('trainers', newItem);
+                            }
+                            setEditItem(null);
+                            setActiveTab('trainers');
+                          } catch (err) {
+                            setMessage({ type: 'error', text: 'Please fill in all fields' });
                           }
-                          setEditItem(null);
-                          setActiveTab('trainers');
                         } else {
                           setMessage({ type: 'error', text: 'Please fill in all fields' });
                           return;
@@ -1339,14 +1273,17 @@ const ReceptDashboard = () => {
                         const attendees = Array.from(document.getElementById('editClassAttendees').selectedOptions).map(
                           (opt) => opt.value
                         );
-                        updateItem('classes', {
-                          ...editItem.item,
-                          attendees,
-                          enrolled: attendees.length,
-                        });
-                        setMessage({ type: 'success', text: `Attendees for ${editItem.item.className} updated successfully` });
-                        setEditItem(null);
-                        setActiveTab('classes');
+                        try {
+                          await updateItem('classes', {
+                            ...editItem.item,
+                            attendees,
+                            enrolled: attendees.length,
+                          });
+                          setEditItem(null);
+                          setActiveTab('classes');
+                        } catch (err) {
+                          setMessage({ type: 'error', text: 'Failed to update attendees' });
+                        }
                       }
                     }}
                     className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg"

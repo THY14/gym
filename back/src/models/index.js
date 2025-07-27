@@ -1,82 +1,135 @@
-import dbConfig from "../config/db.config.js";
-import { Sequelize } from "sequelize";
-import User from "./user.js";
-import Member from "./member.js";
-import MembershipPlan from "./membershipPlan.js";
-import Trainer from "./trainer.js";
-import Payment from "./payment.js";
-import Class from "./class.js";
-import Booking from "./booking.js";
-import Attendance from "./attendance.js";
-import Admin from "./admin.js";
+import { Sequelize, DataTypes } from 'sequelize';
+import sequelize from '../config/database.js';
+
+// Import all models
+import User from './User.js';
+import Client from './Client.js';
+import WorkoutPlan from './WorkoutPlan.js';
+import Class from './Class.js';
+import ClassAvailableDay from './ClassAvailableDay.js';
+import ClassSchedule from './ClassSchedule.js';
+import ScheduleAvailableDay from './ScheduleAvailableDay.js';
+import TrainingSession from './TrainingSession.js';
+import TrainingSessionClient from './TrainingSessionClient.js';
+import SessionTrainingDay from './SessionTrainingDay.js';
+import Payment from './Payment.js';
+import Gym from './Gym.js';
+import Message from './Message.js';
+import MembershipPlan from './MembershipPlan.js';
+import CheckIn from './CheckIn.js';
+
+// Initialize DB object
 const db = {};
-const sequelize = new Sequelize(
-    dbConfig.DB,
-    dbConfig.USER,
-    dbConfig.PASSWORD,
-    {
-      host: dbConfig.HOST,
-      dialect: dbConfig.dialect,
-      port: dbConfig.PORT,
-    }
-);
-db.Sequelize = Sequelize;
+
+// Initialize models
+db.User = User(sequelize, DataTypes);
+db.Client = Client(sequelize, DataTypes);
+db.WorkoutPlan = WorkoutPlan(sequelize, DataTypes);
+db.Class = Class(sequelize, DataTypes);
+db.ClassAvailableDay = ClassAvailableDay(sequelize, DataTypes);
+db.ClassSchedule = ClassSchedule(sequelize, DataTypes);
+db.ScheduleAvailableDay = ScheduleAvailableDay(sequelize, DataTypes);
+db.TrainingSession = TrainingSession(sequelize, DataTypes);
+db.TrainingSessionClient = TrainingSessionClient(sequelize, DataTypes);
+db.SessionTrainingDay = SessionTrainingDay(sequelize, DataTypes);
+db.Payment = Payment(sequelize, DataTypes);
+db.Gym = Gym(sequelize, DataTypes);
+db.Message = Message(sequelize, DataTypes);
+db.MembershipPlan = MembershipPlan(sequelize, DataTypes);
+db.CheckIn = CheckIn(sequelize, DataTypes);
+
+// Shared Day model (for ENUM usage in many-to-many relations)
+db.Day = sequelize.define('Day', {
+  day: {
+    type: DataTypes.ENUM(
+      'Monday',
+      'Tuesday',
+      'Wednesday',
+      'Thursday',
+      'Friday',
+      'Saturday',
+      'Sunday'
+    ),
+    allowNull: false,
+  },
+});
+
+// ================== Associations ==================
+
+// User & Client
+db.User.hasMany(db.Client, { foreignKey: 'trainerId', onDelete: 'CASCADE' });
+db.Client.belongsTo(db.User, { foreignKey: 'trainerId', as: 'Trainer' });
+db.Client.belongsTo(db.User, { foreignKey: 'userId', as: 'Member' });
+
+// Client & WorkoutPlan + Membership
+db.Client.belongsTo(db.WorkoutPlan, { foreignKey: 'workoutPlanId', onDelete: 'SET NULL' });
+db.Client.belongsTo(db.MembershipPlan, { foreignKey: 'membershipPlanId', onDelete: 'SET NULL' });
+
+// User & Class
+db.User.hasMany(db.Class, { foreignKey: 'trainerId', onDelete: 'CASCADE' });
+db.Class.belongsTo(db.User, { foreignKey: 'trainerId', as: 'Trainer' });
+
+// Class & Schedule
+db.Class.hasMany(db.ClassSchedule, { foreignKey: 'classId', onDelete: 'CASCADE' });
+db.ClassSchedule.belongsTo(db.Class, { foreignKey: 'classId' });
+
+// User & ClassSchedule
+db.User.hasMany(db.ClassSchedule, { foreignKey: 'trainerId', onDelete: 'CASCADE' });
+db.ClassSchedule.belongsTo(db.User, { foreignKey: 'trainerId', as: 'Trainer' });
+
+// User & TrainingSession
+db.User.hasMany(db.TrainingSession, { foreignKey: 'trainerId', onDelete: 'CASCADE' });
+db.TrainingSession.belongsTo(db.User, { foreignKey: 'trainerId', as: 'Trainer' });
+
+// Client & TrainingSession (one-to-many)
+db.Client.hasMany(db.TrainingSession, { foreignKey: 'clientId', onDelete: 'SET NULL' });
+db.TrainingSession.belongsTo(db.Client, { foreignKey: 'clientId' });
+
+// TrainingSession & Client (many-to-many)
+db.TrainingSession.belongsToMany(db.Client, {
+  through: db.TrainingSessionClient,
+  foreignKey: 'sessionId',
+});
+db.Client.belongsToMany(db.TrainingSession, {
+  through: db.TrainingSessionClient,
+  foreignKey: 'clientId',
+});
+
+// Gym Associations
+db.Class.belongsTo(db.Gym, { foreignKey: 'gymId' });
+db.ClassSchedule.belongsTo(db.Gym, { foreignKey: 'gymId' });
+db.TrainingSession.belongsTo(db.Gym, { foreignKey: 'gymId' });
+db.Gym.hasMany(db.CheckIn, { foreignKey: 'gymId' });
+
+// Payments
+db.Client.hasMany(db.Payment, { foreignKey: 'clientId' });
+db.Class.hasMany(db.Payment, { foreignKey: 'classId' });
+db.TrainingSession.hasMany(db.Payment, { foreignKey: 'sessionId' });
+db.MembershipPlan.hasMany(db.Payment, { foreignKey: 'membershipPlanId' });
+
+// Messaging
+db.User.hasMany(db.Message, { foreignKey: 'senderId' });
+db.Client.hasMany(db.Message, { foreignKey: 'recipientId' });
+
+// Check-Ins
+db.Client.hasMany(db.CheckIn, { foreignKey: 'clientId' });
+
+// Days of Availability (many-to-many with Day model)
+db.Class.belongsToMany(db.Day, {
+  through: db.ClassAvailableDay,
+  foreignKey: 'classId',
+});
+db.ClassSchedule.belongsToMany(db.Day, {
+  through: db.ScheduleAvailableDay,
+  foreignKey: 'scheduleId',
+});
+db.TrainingSession.belongsToMany(db.Day, {
+  through: db.SessionTrainingDay,
+  foreignKey: 'sessionId',
+});
+
+// Finalize
 db.sequelize = sequelize;
-
-
-db.user = User(sequelize, Sequelize);
-db.member = Member(sequelize, Sequelize);
-db.membershipPlan = MembershipPlan(sequelize, Sequelize);
-db.trainer = Trainer(sequelize, Sequelize);
-db.payment = Payment(sequelize, Sequelize);
-db.class = Class(sequelize, Sequelize);
-db.booking = Booking(sequelize, Sequelize);
-db.attendance = Attendance(sequelize, Sequelize);
-db.admin = Admin(sequelize, Sequelize);
-// Define associations if needed
-
-db.admin.belongsTo(db.user, { foreignKey: 'userId' });
-
-db.user.hasOne(db.admin, { foreignKey: 'userId' });
-db.user.hasOne(db.member, { foreignKey: 'userId' });
-db.user.hasOne(db.trainer, { foreignKey: 'userId' });
-
-db.member.belongsTo(db.user, { foreignKey: 'userId' });
-db.member.belongsTo(db.membershipPlan, { foreignKey: 'membershipPlanId' });
-db.member.hasMany(db.booking, { foreignKey: 'memberId' });
-db.member.hasMany(db.attendance, { foreignKey: 'memberId' });
-db.member.hasMany(db.payment, { foreignKey: 'memberId' });
-db.member.belongsToMany(db.class, { through: db.attendance, foreignKey: 'memberId' });
-
-
-db.trainer.belongsTo(db.user, { foreignKey: 'userId' });
-db.trainer.hasMany(db.class, { foreignKey: 'trainerId' });
-db.trainer.hasMany(db.booking, { foreignKey: 'trainerId' }); 
-
-db.class.hasMany(db.booking, { foreignKey: 'classId' });
-db.class.hasMany(db.attendance, { foreignKey: 'classId' });
-db.class.belongsTo(db.trainer, { foreignKey: 'trainerId' });
-db.class.belongsToMany(db.member, { through: db.attendance, foreignKey: 'classId' });
-
-db.booking.belongsTo(db.member, { foreignKey: 'memberId' });
-db.booking.belongsTo(db.class, { foreignKey: 'classId' });
-db.booking.belongsTo(db.trainer, { foreignKey: 'trainerId' });
-db.booking.hasOne(db.payment, { foreignKey: 'bookingId' });
-
-db.payment.belongsTo(db.member, { foreignKey: 'memberId' });
-db.payment.belongsTo(db.booking, { foreignKey: 'bookingId' });
-db.payment.belongsTo(db.membershipPlan,{ foreignKey: 'membershipPlanId'});
-
-db.attendance.belongsTo(db.member, { foreignKey: 'memberId' });
-db.attendance.belongsTo(db.class, { foreignKey: 'classId' });
-
-
-db.membershipPlan.hasMany(db.member, { foreignKey: 'membershipPlanId' });
-db.membershipPlan.hasMany(db.payment, { foreignKey: 'membershipPlanId' });
-
-
-
-// Sync the models with the database
-await sequelize.sync({alter: true}); 
+db.Sequelize = Sequelize;
 
 export default db;

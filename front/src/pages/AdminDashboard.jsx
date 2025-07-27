@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useApi, useAsyncAction } from '../hooks/useApi';
+import { authAPI, bookingsAPI, paymentsAPI, trainersAPI } from '../services/api';
 import { Users, DollarSign, Calendar, Activity, UserCheck, Settings, Shield, User, MapPin, Phone, Mail, Clock } from 'lucide-react';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
 
 const AdminDashboard = () => {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
-  const [users, setUsers] = useState([]);
-  const [classes, setClasses] = useState([]);
-  const [trainers, setTrainers] = useState([]);
-  const [payments, setPayments] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [newMember, setNewMember] = useState({ name: '', email: '', role: 'member' });
   const [newClass, setNewClass] = useState({
     name: '',
@@ -17,7 +16,7 @@ const AdminDashboard = () => {
     capacity: '',
     duration: '',
     price: '',
-    image: '',
+    image: null,
     trainer: { user: { firstName: '', lastName: '' } },
     features: [],
     availability: { days: [], times: [] },
@@ -39,7 +38,58 @@ const AdminDashboard = () => {
   const [editClass, setEditClass] = useState(null);
   const [editTrainer, setEditTrainer] = useState(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [contactInfo, setContactInfo] = useState({
+  const [successMessage, setSuccessMessage] = useState(null);
+  const { execute } = useAsyncAction();
+
+  // Auto-dismiss success message after 3 seconds
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
+  // Predefined options for selections
+  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  const availableSpecializations = [
+    'Strength Training', 'Cardio & HIIT', 'Yoga & Wellness', 'Sports Performance', 'Weight Loss'
+  ];
+  const availableCertifications = ['NASM-CPT', 'ACSM-CPT', 'ACE-CPT', 'TRX Certified'];
+  const availableSpecialties = [
+    'Weight Loss', 'Muscle Building', 'Nutrition Planning', 'HIIT Training', 'Cardio Conditioning', 'Flexibility'
+  ];
+  const classFeatures = [
+    'Form correction', 'Flexibility improvement', 'Stress reduction', 'Fat burning'
+  ];
+
+  // Fetch data using useApi hook
+  const { data: usersData, loading: usersLoading, error: usersError, refetch: refetchUsers } = useApi(
+    () => authAPI.getAllUsers(),
+    []
+  );
+  const { data: classesData, loading: classesLoading, error: classesError, refetch: refetchClasses } = useApi(
+    () => bookingsAPI.getAllClasses(),
+    []
+  );
+  const { data: trainersData, loading: trainersLoading, error: trainersError, refetch: refetchTrainers } = useApi(
+    () => trainersAPI.getAll(),
+    []
+  );
+  const { data: paymentsData, loading: paymentsLoading, error: paymentsError, refetch: refetchPayments } = useApi(
+    () => paymentsAPI.getAllPayments(),
+    []
+  );
+  const { data: contactData, loading: contactLoading, error: contactError, refetch: refetchContact } = useApi(
+    () => authAPI.getContactInfo(),
+    []
+  );
+
+  // Combine API data into states
+  const users = usersData || [];
+  const classes = classesData || [];
+  const trainers = trainersData || [];
+  const payments = paymentsData || [];
+  const contactInfo = contactData || {
     address: {
       line1: 'No. 123, Street 271',
       line2: 'Boeng Keng Kang 3, Chamkarmon',
@@ -51,179 +101,7 @@ const AdminDashboard = () => {
       weekdays: 'Monday - Friday: 5:00 AM - 11:00 PM',
       weekends: 'Saturday - Sunday: 6:00 AM - 10:00 PM'
     }
-  });
-
-  // Predefined options for selections
-  const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-
-  const availableSpecializations = [
-    'Strength Training', 'Cardio & HIIT', 'Yoga & Wellness', 'Sports Performance', 'Weight Loss'
-  ];
-  const availableCertifications = [
-    'NASM-CPT', 'ACSM-CPT', 'ACE-CPT', 'TRX Certified' ];
-
-  const availableSpecialties = [
-    'Weight Loss', 'Muscle Building', 'Nutrition Planning', 'HIIT Training', 'Cardio Conditioning', 'Flexibility',
-  ];
-  const classFeatures = [
-    'Form correction', 'Flexibility improvement', 'Stress reduction', 'Fat burning',
-  ];
-
-  // Load data from local storage or initialize with defaults
-  useEffect(() => {
-    setIsLoading(true);
-    const loadData = () => {
-      // Load contact info
-      const storedContact = localStorage.getItem('contactInfo');
-      if (storedContact) {
-        setContactInfo(JSON.parse(storedContact));
-      }
-
-      // Load classes
-      const storedClasses = localStorage.getItem('classes');
-      if (storedClasses) {
-        setClasses(JSON.parse(storedClasses));
-      } else {
-        setClasses([
-          {
-            id: 1,
-            name: 'Strength & Conditioning',
-            description: 'Build muscle, increase strength, and tone your body.',
-            capacity: 15,
-            duration: 90,
-            price: 30,
-            image: '/Strenght.jpg',
-            trainer: { user: { firstName: 'Sarah', lastName: 'Johnson' } },
-            features: ['Personal workout plans', 'Form correction', 'Progressive overload'],
-            availability: { days: ['Monday', 'Wednesday', 'Friday'], times: ['5:00 PM - 7:00 PM'] },
-            startTime: '17:00'
-          },
-          {
-            id: 2,
-            name: 'Yoga & Wellness',
-            description: 'Find balance, flexibility, and inner peace.',
-            capacity: 20,
-            duration: 60,
-            price: 25,
-            image: '/Yoga&Wellness.jpg',
-            trainer: { user: { firstName: 'Emma', lastName: 'Chen' } },
-            features: ['Flexibility improvement', 'Stress reduction', 'Mindfulness'],
-            availability: { days: ['Tuesday', 'Thursday'], times: ['9:00 AM - 11:00 AM'] },
-            startTime: '09:00'
-          },
-          {
-            id: 3,
-            name: 'Cardio Class',
-            description: 'High-intensity cardiovascular workouts.',
-            capacity: 25,
-            duration: 75,
-            price: 25,
-            image: '/CardioClass.jpg',
-            trainer: { user: { firstName: 'Mike', lastName: 'Rodriguez' } },
-            features: ['Fat burning', 'Heart health', 'High energy'],
-            availability: { days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'], times: ['7:00 PM - 9:00 PM'] },
-            startTime: '19:00'
-          }
-        ]);
-      }
-
-      // Load trainers
-      const storedTrainers = localStorage.getItem('trainers');
-      if (storedTrainers) {
-        setTrainers(JSON.parse(storedTrainers));
-      } else {
-        setTrainers([
-          {
-            id: 1,
-            name: 'Sarah Johnson',
-            specialization: ['Strength Training', 'Nutrition Planning'],
-            experience: '8 years',
-            bio: 'Certified personal trainer specializing in strength training.',
-            image: '/Group_Persoanl_Trainer.jpg',
-            certifications: ['NASM-CPT', 'Precision Nutrition', 'Corrective Exercise Specialist'],
-            specialties: ['Weight Loss', 'Muscle Building', 'Nutrition Planning', 'Form Correction'],
-            availability: { 
-              days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-              times: ['6:00 AM - 8:00 PM']
-            },
-            phone: '(555) 123-4567',
-            email: 'sarah@gymclub.com'
-          },
-          {
-            id: 2,
-            name: 'Mike Rodriguez',
-            specialization: ['Cardio & HIIT'],
-            experience: '6 years',
-            bio: 'High-energy trainer focused on cardiovascular fitness.',
-            image: '/Cardio.jpg',
-            certifications: ['ACSM-CPT', 'TRX Certified', 'HIIT Specialist'],
-            specialties: ['HIIT Training', 'Cardio Conditioning', 'Fat Loss', 'Endurance Building'],
-            availability: { 
-              days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'],
-              times: ['5:00 AM - 7:00 PM']
-            },
-            phone: '(555) 234-5678',
-            email: 'mike@gymclub.com'
-          },
-          {
-            id: 3,
-            name: 'Emma Chen',
-            specialization: ['Yoga & Wellness'],
-            experience: '10 years',
-            bio: 'Experienced yoga instructor and wellness coach.',
-            image: '/Health & Fitness.jpg',
-            certifications: ['RYT-500', 'Meditation Teacher', 'Wellness Coach'],
-            specialties: ['Yoga', 'Meditation', 'Flexibility', 'Stress Management', 'Mindfulness'],
-            availability: { 
-              days: ['Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-              times: ['7:00 AM - 6:00 PM']
-            },
-            phone: '(555) 345-6789',
-            email: 'emma@gymclub.com'
-          },
-          {
-            id: 4,
-            name: 'David Thompson',
-            specialization: ['Functional Fitness'],
-            experience: '7 years',
-            bio: 'Former athlete turned trainer, specializing in functional movement.',
-            image: '/Equidment.jpg',
-            certifications: ['CSCS', 'FMS Level 2', 'Sports Performance'],
-            specialties: ['Functional Movement', 'Sports Performance', 'Injury Prevention', 'Mobility'],
-            availability: { 
-              days: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Sunday'],
-              times: ['6:00 AM - 8:00 PM']
-            },
-            phone: '(555) 456-7890',
-            email: 'david@gymclub.com'
-          }
-        ]);
-      }
-
-      // Load users and payments
-      setUsers([
-        { id: 1, name: 'John Doe', email: 'john.doe@email.com', role: 'member', status: 'active', joinDate: '2024-01-15' },
-        { id: 2, name: 'Sarah Johnson', email: 'sarah.j@email.com', role: 'trainer', status: 'active', classes: 12 },
-        { id: 3, name: 'Mike Smith', email: 'mike.s@email.com', role: 'member', status: 'active', joinDate: '2024-01-15' },
-        { id: 4, name: 'Lisa Brown', email: 'lisa.b@email.com', role: 'receptionist', status: 'active', joinDate: '2024-02-01' }
-      ]);
-      setPayments([
-        { id: 1, userId: 1, amount: 199, description: '3 Month Membership', date: '2024-01-15', method: 'Credit Card', status: 'completed' },
-        { id: 2, userId: 3, amount: 25, description: 'Class Fee', date: '2024-02-01', method: 'Cash', status: 'completed' }
-      ]);
-
-      setIsLoading(false);
-    };
-
-    loadData();
-  }, []);
-
-  // Save data to local storage
-  useEffect(() => {
-    localStorage.setItem('contactInfo', JSON.stringify(contactInfo));
-    localStorage.setItem('classes', JSON.stringify(classes));
-    localStorage.setItem('trainers', JSON.stringify(trainers));
-  }, [contactInfo, classes, trainers]);
+  };
 
   // Permissions
   const permissions = useMemo(() => ({
@@ -274,117 +152,159 @@ const AdminDashboard = () => {
   }, []);
 
   // CRUD Operations for Users
-  const handleAddUser = useCallback((e, role) => {
+  const handleAddUser = useCallback(async (e, role) => {
     e.preventDefault();
     const permission = role === 'member' ? 'manage_members' : role === 'trainer' ? 'manage_trainers' : 'manage_receptionists';
-    if (hasPermission(permission)) {
-      if (newMember.name && newMember.email) {
-        const newUser = {
-          id: users.length + 1,
+    if (!hasPermission(permission)) {
+      setSuccessMessage(`Permission denied: Cannot add ${role}`);
+      return;
+    }
+    if (!newMember.name || !newMember.email) {
+      setSuccessMessage('Please fill in all required fields');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newMember.email)) {
+      setSuccessMessage('Please enter a valid email address');
+      return;
+    }
+    try {
+      const newUser = {
+        name: newMember.name,
+        email: newMember.email,
+        role,
+        status: 'active',
+        joinDate: new Date().toISOString().slice(0, 10),
+        ...(role === 'trainer' ? { classes: 0 } : {})
+      };
+      await execute(() => authAPI.createUser(newUser));
+      if (role === 'trainer') {
+        await execute(() => trainersAPI.create({
           name: newMember.name,
           email: newMember.email,
-          role,
-          status: 'active',
-          joinDate: new Date().toISOString().slice(0, 10),
-          ...(role === 'trainer' ? { classes: 0 } : {})
-        };
-        setUsers(prev => [...prev, newUser]);
-        if (role === 'trainer') {
-          setTrainers(prev => [...prev, {
-            id: newUser.id,
-            name: newUser.name,
-            specialization: [],
-            experience: '',
-            bio: '',
-            image: null,
-            certifications: [],
-            specialties: [],
-            availability: { days: [], times: [] },
-            phone: '',
-            email: newUser.email
-          }]);
-        }
-        if (role === 'member') {
-          setPayments(prev => [...prev, {
-            id: prev.length + 1,
-            userId: newUser.id,
-            amount: 199,
-            description: 'New Member Registration',
-            date: new Date().toISOString().slice(0, 10),
-            method: 'Credit Card',
-            status: 'completed'
-          }]);
-        }
-        setNewMember({ name: '', email: '', role });
-      } else {
-        alert('Please fill in all required fields');
+          specialization: [],
+          experience: '',
+          bio: '',
+          image: null,
+          certifications: [],
+          specialties: [],
+          availability: { days: [], times: [] },
+          phone: ''
+        }));
       }
-    } else {
-      alert(`Permission denied: Cannot add ${role}`);
+      if (role === 'member') {
+        await execute(() => paymentsAPI.create({
+          userId: newUser.id,
+          amount: 199,
+          description: 'New Member Registration',
+          date: new Date().toISOString().slice(0, 10),
+          method: 'Credit Card',
+          status: 'completed'
+        }));
+      }
+      setNewMember({ name: '', email: '', role });
+      setSuccessMessage(`Successfully added ${role}`);
+      refetchUsers();
+      if (role === 'trainer') refetchTrainers();
+      if (role === 'member') refetchPayments();
+    } catch (err) {
+      setSuccessMessage(`Failed to add ${role}: ${err.message}`);
     }
-  }, [hasPermission, newMember, users]);
+  }, [hasPermission, newMember, execute, refetchUsers, refetchTrainers, refetchPayments]);
 
   const handleEditUser = useCallback((user) => {
     setEditUser(user);
   }, []);
 
-  const handleUpdateUser = useCallback((e) => {
+  const handleUpdateUser = useCallback(async (e) => {
     e.preventDefault();
-    const permission = editUser.role === 'member' ? 'manage_members' : editUser.role === 'trainer' ? 'manage_trainers' : 'manage_receptionists';
-    if (hasPermission(permission) && editUser) {
-      setUsers(prev => prev.map(u => u.id === editUser.id ? { ...editUser } : u));
+    const permission = editUser?.role === 'member' ? 'manage_members' : editUser?.role === 'trainer' ? 'manage_trainers' : 'manage_receptionists';
+    if (!hasPermission(permission) || !editUser) {
+      setSuccessMessage(`Permission denied: Cannot update ${editUser?.role || 'user'}`);
+      return;
+    }
+    if (!editUser.name || !editUser.email) {
+      setSuccessMessage('Please fill in all required fields');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editUser.email)) {
+      setSuccessMessage('Please enter a valid email address');
+      return;
+    }
+    try {
+      await execute(() => authAPI.updateUser(editUser.id, editUser));
       if (editUser.role === 'trainer') {
-        setTrainers(prev => prev.map(t => t.id === editUser.id ? { ...t, name: editUser.name, email: editUser.email } : t));
+        await execute(() => trainersAPI.update(editUser.id, { name: editUser.name, email: editUser.email }));
+        await execute(() => bookingsAPI.updateClassesByTrainer(editUser.id, { trainer: { user: { firstName: editUser.name.split(' ')[0], lastName: editUser.name.split(' ')[1] || '' } } }));
       }
       setEditUser(null);
-    } else {
-      alert(`Permission denied: Cannot update ${editUser.role}`);
+      setSuccessMessage('User updated successfully');
+      refetchUsers();
+      if (editUser.role === 'trainer') {
+        refetchTrainers();
+        refetchClasses();
+      }
+    } catch (err) {
+      setSuccessMessage(`Failed to update user: ${err.message}`);
     }
-  }, [hasPermission, editUser]);
+  }, [hasPermission, editUser, execute, refetchUsers, refetchTrainers, refetchClasses]);
 
-  const handleDeleteUser = useCallback((userId, role) => {
+  const handleDeleteUser = useCallback(async (userId, role) => {
     const permission = role === 'member' ? 'manage_members' : role === 'trainer' ? 'manage_trainers' : 'manage_receptionists';
-    if (hasPermission(permission)) {
-      setUsers(prev => prev.filter(u => u.id !== userId));
+    if (!hasPermission(permission)) {
+      setSuccessMessage(`Permission denied: Cannot delete ${role}`);
+      return;
+    }
+    try {
+      await execute(() => authAPI.deleteUser(userId));
       if (role === 'trainer') {
-        setTrainers(prev => prev.filter(t => t.id !== userId));
-        setClasses(prev => prev.map(c => ({
-          ...c,
-          trainer: c.trainer.user.firstName + ' ' + c.trainer.user.lastName === users.find(u => u.id === userId)?.name
-            ? { user: { firstName: 'Unassigned', lastName: '' } }
-            : c.trainer
-        })));
+        await execute(() => trainersAPI.delete(userId));
+        await execute(() => bookingsAPI.updateClassesByTrainer(userId, { trainer: { user: { firstName: 'Unassigned', lastName: '' } } }));
       }
       if (role === 'member') {
-        setPayments(prev => prev.filter(p => p.userId !== userId));
+        await execute(() => paymentsAPI.deleteByUserId(userId));
       }
-    } else {
-      alert(`Permission denied: Cannot delete ${role}`);
+      setSuccessMessage(`Successfully deleted ${role}`);
+      refetchUsers();
+      if (role === 'trainer') {
+        refetchTrainers();
+        refetchClasses();
+      }
+      if (role === 'member') refetchPayments();
+    } catch (err) {
+      setSuccessMessage(`Failed to delete ${role}: ${err.message}`);
     }
-  }, [hasPermission, users]);
+  }, [hasPermission, execute, refetchUsers, refetchTrainers, refetchClasses, refetchPayments]);
 
   // CRUD Operations for Classes
-  const handleAddClass = useCallback((e) => {
-  e.preventDefault();
-  if (hasPermission('manage_classes')) {
+  const handleAddClass = useCallback(async (e) => {
+    e.preventDefault();
+    if (!hasPermission('manage_classes')) {
+      setSuccessMessage('Permission denied: Cannot add class');
+      return;
+    }
     if (
-      newClass.name &&
-      newClass.capacity &&
-      newClass.duration &&
-      newClass.price &&
-      newClass.availability.days.length > 0 &&
-      newClass.trainer.user.firstName &&
-      newClass.startTime
+      !newClass.name ||
+      !newClass.capacity ||
+      !newClass.duration ||
+      !newClass.price ||
+      !newClass.availability.days.length ||
+      !newClass.trainer.user.firstName ||
+      !newClass.startTime
     ) {
+      setSuccessMessage('Please fill in all required fields');
+      return;
+    }
+    try {
       const [firstName, lastName] = newClass.trainer.user.firstName.split(' ');
-      setClasses(prev => [...prev, {
-        id: prev.length + 1,
+      const classData = {
         name: newClass.name,
         description: newClass.description || '',
         capacity: parseInt(newClass.capacity),
         duration: parseInt(newClass.duration),
         price: parseFloat(newClass.price),
-        image: newClass.image || '/default_class.jpg',
+        image: newClass.image ? await uploadImage(newClass.image) : '/default_class.jpg',
         trainer: { user: { firstName, lastName: lastName || '' } },
         features: newClass.features.filter(f => f.trim()),
         availability: {
@@ -392,10 +312,11 @@ const AdminDashboard = () => {
           times: newClass.availability.times.length > 0 ? newClass.availability.times : [newClass.startTime]
         },
         startTime: newClass.startTime
-      }]);
+      };
+      await execute(() => bookingsAPI.createClass(classData));
       setNewClass({
         name: '',
-        description: null,
+        description: '',
         capacity: '',
         duration: '',
         price: '',
@@ -405,57 +326,81 @@ const AdminDashboard = () => {
         availability: { days: [], times: [] },
         startTime: ''
       });
-    } else {
-      alert('Please fill in all required fields');
+      setSuccessMessage('Class added successfully');
+      refetchClasses();
+    } catch (err) {
+      setSuccessMessage(`Failed to add class: ${err.message}`);
     }
-  } else {
-    alert('Permission denied: Cannot add class');
-  }
-}, [hasPermission, newClass]);
+  }, [hasPermission, newClass, execute, refetchClasses]);
 
-  const handleUpdateClass = useCallback((e) => {
+  const handleUpdateClass = useCallback(async (e) => {
     e.preventDefault();
-    if (hasPermission('manage_classes') && editClass) {
+    if (!hasPermission('manage_classes') || !editClass) {
+      setSuccessMessage('Permission denied: Cannot update class');
+      return;
+    }
+    try {
       const [firstName, lastName] = editClass.trainer.user.firstName.split(' ');
-      setClasses(prev => prev.map(c => c.id === editClass.id ? {
-        ...editClass,
+      const classData = {
+        name: editClass.name,
         description: editClass.description || '',
-        trainer: { user: { firstName, lastName: lastName || '' } },
         capacity: parseInt(editClass.capacity),
         duration: parseInt(editClass.duration),
         price: parseFloat(editClass.price),
+        image: editClass.image && typeof editClass.image !== 'string' ? await uploadImage(editClass.image) : editClass.image || '/default_class.jpg',
+        trainer: { user: { firstName, lastName: lastName || '' } },
         features: editClass.features.filter(f => f.trim()),
         availability: editClass.availability,
         startTime: editClass.startTime
-      } : c));
+      };
+      await execute(() => bookingsAPI.updateClass(editClass.id, classData));
       setEditClass(null);
-    } else {
-      alert('Permission denied: Cannot update class');
+      setSuccessMessage('Class updated successfully');
+      refetchClasses();
+    } catch (err) {
+      setSuccessMessage(`Failed to update class: ${err.message}`);
     }
-  }, [hasPermission, editClass]);
+  }, [hasPermission, editClass, execute, refetchClasses]);
 
-  const handleDeleteClass = useCallback((classId) => {
-    if (hasPermission('manage_classes')) {
-      setClasses(prev => prev.filter(c => c.id !== classId));
-    } else {
-      alert('Permission denied: Cannot delete class');
+  const handleDeleteClass = useCallback(async (classId) => {
+    if (!hasPermission('manage_classes')) {
+      setSuccessMessage('Permission denied: Cannot delete class');
+      return;
     }
-  }, [hasPermission]);
+    try {
+      await execute(() => bookingsAPI.deleteClass(classId));
+      setSuccessMessage('Class deleted successfully');
+      refetchClasses();
+    } catch (err) {
+      setSuccessMessage(`Failed to delete class: ${err.message}`);
+    }
+  }, [hasPermission, execute, refetchClasses]);
 
   // CRUD Operations for Trainers
-  const handleAddTrainer = useCallback((e) => {
-  e.preventDefault();
-  if (hasPermission('manage_trainers')) {
+  const handleAddTrainer = useCallback(async (e) => {
+    e.preventDefault();
+    if (!hasPermission('manage_trainers')) {
+      setSuccessMessage('Permission denied: Cannot add trainer');
+      return;
+    }
     if (
-      newTrainer.name &&
-      newTrainer.specialization.length > 0 &&
-      newTrainer.email &&
-      newTrainer.certifications.length > 0 &&
-      newTrainer.specialties.length > 0 &&
-      newTrainer.availability.days.length > 0
+      !newTrainer.name ||
+      !newTrainer.specialization.length ||
+      !newTrainer.email ||
+      !newTrainer.certifications.length ||
+      !newTrainer.specialties.length ||
+      !newTrainer.availability.days.length
     ) {
+      setSuccessMessage('Please fill in all required fields');
+      return;
+    }
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newTrainer.email)) {
+      setSuccessMessage('Please enter a valid email address');
+      return;
+    }
+    try {
       const newUser = {
-        id: users.length + 1,
         name: newTrainer.name,
         email: newTrainer.email,
         role: 'trainer',
@@ -463,14 +408,14 @@ const AdminDashboard = () => {
         joinDate: new Date().toISOString().slice(0, 10),
         classes: 0
       };
-      setUsers(prev => [...prev, newUser]);
-      setTrainers(prev => [...prev, {
-        id: newUser.id,
+      const userResponse = await execute(() => authAPI.createUser(newUser));
+      const trainerData = {
+        id: userResponse.data.id,
         name: newTrainer.name,
         specialization: newTrainer.specialization,
         experience: newTrainer.experience,
         bio: newTrainer.bio || '',
-        image: newTrainer.image || null,
+        image: newTrainer.image ? await uploadImage(newTrainer.image) : null,
         certifications: newTrainer.certifications,
         specialties: newTrainer.specialties,
         availability: {
@@ -479,12 +424,13 @@ const AdminDashboard = () => {
         },
         phone: newTrainer.phone,
         email: newTrainer.email
-      }]);
+      };
+      await execute(() => trainersAPI.create(trainerData));
       setNewTrainer({
         name: '',
         specialization: [],
         experience: '',
-        bio: null,
+        bio: '',
         image: null,
         certifications: [],
         specialties: [],
@@ -492,52 +438,63 @@ const AdminDashboard = () => {
         phone: '',
         email: ''
       });
-    } else {
-      alert('Please fill in all required fields');
+      setSuccessMessage('Trainer added successfully');
+      refetchUsers();
+      refetchTrainers();
+    } catch (err) {
+      setSuccessMessage(`Failed to add trainer: ${err.message}`);
     }
-  } else {
-    alert('Permission denied: Cannot add trainer');
-  }
-}, [hasPermission, newTrainer, users]);
+  }, [hasPermission, newTrainer, execute, refetchUsers, refetchTrainers]);
 
-  const handleUpdateTrainer = useCallback((e) => {
+  const handleUpdateTrainer = useCallback(async (e) => {
     e.preventDefault();
-    if (hasPermission('manage_trainers') && editTrainer) {
-      setTrainers(prev => prev.map(t => t.id === editTrainer.id ? {
-        ...editTrainer,
-        bio: editTrainer.bio || '',
+    if (!hasPermission('manage_trainers') || !editTrainer) {
+      setSuccessMessage('Permission denied: Cannot update trainer');
+      return;
+    }
+    try {
+      const trainerData = {
+        name: editTrainer.name,
         specialization: editTrainer.specialization,
+        experience: editTrainer.experience,
+        bio: editTrainer.bio || '',
+        image: editTrainer.image && typeof editTrainer.image !== 'string' ? await uploadImage(editTrainer.image) : editTrainer.image || null,
         certifications: editTrainer.certifications.filter(c => c.trim()),
         specialties: editTrainer.specialties.filter(s => s.trim()),
-        availability: editTrainer.availability
-      } : t));
-      setUsers(prev => prev.map(u => u.id === editTrainer.id ? { ...u, name: editTrainer.name, email: editTrainer.email } : u));
-      setClasses(prev => prev.map(c => ({
-        ...c,
-        trainer: c.trainer.user.firstName + ' ' + c.trainer.user.lastName === users.find(u => u.id === editTrainer.id)?.name
-          ? { user: { firstName: editTrainer.name.split(' ')[0], lastName: editTrainer.name.split(' ')[1] || '' } }
-          : c.trainer
-      })));
+        availability: editTrainer.availability,
+        phone: editTrainer.phone,
+        email: editTrainer.email
+      };
+      await execute(() => trainersAPI.update(editTrainer.id, trainerData));
+      await execute(() => authAPI.updateUser(editTrainer.id, { name: editTrainer.name, email: editTrainer.email }));
+      await execute(() => bookingsAPI.updateClassesByTrainer(editTrainer.id, { trainer: { user: { firstName: editTrainer.name.split(' ')[0], lastName: editTrainer.name.split(' ')[1] || '' } } }));
       setEditTrainer(null);
-    } else {
-      alert('Permission denied: Cannot update trainer');
+      setSuccessMessage('Trainer updated successfully');
+      refetchUsers();
+      refetchTrainers();
+      refetchClasses();
+    } catch (err) {
+      setSuccessMessage(`Failed to update trainer: ${err.message}`);
     }
-  }, [hasPermission, editTrainer, users]);
+  }, [hasPermission, editTrainer, execute, refetchUsers, refetchTrainers, refetchClasses]);
 
-  const handleDeleteTrainer = useCallback((trainerId) => {
-    if (hasPermission('manage_trainers')) {
-      setTrainers(prev => prev.filter(t => t.id !== trainerId));
-      setUsers(prev => prev.filter(u => u.id !== trainerId));
-      setClasses(prev => prev.map(c => ({
-        ...c,
-        trainer: c.trainer.user.firstName + ' ' + c.trainer.user.lastName === users.find(u => u.id === trainerId)?.name
-          ? { user: { firstName: 'Unassigned', lastName: '' } }
-          : c.trainer
-      })));
-    } else {
-      alert('Permission denied: Cannot delete trainer');
+  const handleDeleteTrainer = useCallback(async (trainerId) => {
+    if (!hasPermission('manage_trainers')) {
+      setSuccessMessage('Permission denied: Cannot delete trainer');
+      return;
     }
-  }, [hasPermission, users]);
+    try {
+      await execute(() => trainersAPI.delete(trainerId));
+      await execute(() => authAPI.deleteUser(trainerId));
+      await execute(() => bookingsAPI.updateClassesByTrainer(trainerId, { trainer: { user: { firstName: 'Unassigned', lastName: '' } } }));
+      setSuccessMessage('Trainer deleted successfully');
+      refetchUsers();
+      refetchTrainers();
+      refetchClasses();
+    } catch (err) {
+      setSuccessMessage(`Failed to delete trainer: ${err.message}`);
+    }
+  }, [hasPermission, execute, refetchUsers, refetchTrainers, refetchClasses]);
 
   // Handle Contact Info Update
   const handleContactChange = useCallback((field, value) => {
@@ -553,35 +510,35 @@ const AdminDashboard = () => {
     });
   }, []);
 
-  const handleSaveContact = useCallback(() => {
-    if (hasPermission('manage_settings')) {
-      localStorage.setItem('contactInfo', JSON.stringify(contactInfo));
-      alert('Contact information saved successfully!');
-    } else {
-      alert('Permission denied: Cannot save contact information');
+  const handleSaveContact = useCallback(async () => {
+    if (!hasPermission('manage_settings')) {
+      setSuccessMessage('Permission denied: Cannot save contact information');
+      return;
     }
-  }, [hasPermission, contactInfo]);
+    try {
+      await execute(() => authAPI.updateContactInfo(contactInfo));
+      setSuccessMessage('Contact information saved successfully');
+      refetchContact();
+    } catch (err) {
+      setSuccessMessage(`Failed to save contact information: ${err.message}`);
+    }
+  }, [hasPermission, contactInfo, execute, refetchContact]);
 
   const handleCancelContact = useCallback(() => {
-    const storedContact = localStorage.getItem('contactInfo');
-    if (storedContact) {
-      setContactInfo(JSON.parse(storedContact));
-    } else {
-      setContactInfo({
-        address: {
-          line1: 'No. 123, Street 271',
-          line2: 'Boeng Keng Kang 3, Chamkarmon',
-          city: 'Phnom Penh, Cambodia'
-        },
-        phone: '(885) 123-456-789',
-        email: 'info@gymclub.com',
-        hours: {
-          weekdays: 'Monday - Friday: 5:00 AM - 11:00 PM',
-          weekends: 'Saturday - Sunday: 6:00 AM - 10:00 PM'
-        }
-      });
+    refetchContact();
+  }, [refetchContact]);
+
+  // Helper function to upload images
+  const uploadImage = async (file) => {
+    if (!file) return null;
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('Image size must be less than 5MB');
     }
-  }, []);
+    const formData = new FormData();
+    formData.append('image', file);
+    const response = await authAPI.uploadImage(formData);
+    return response.data.imageUrl;
+  };
 
   // Calculate totals
   const totalMembers = useMemo(() => users.filter(u => u.role === 'member').length, [users]);
@@ -622,19 +579,52 @@ const AdminDashboard = () => {
     }
   };
 
-  // Handle file input for trainer image
+  // Handle file input for trainer or class image
   const handleTrainerImageChange = (e) => {
     const file = e.target.files[0];
     if (editTrainer) {
       setEditTrainer(prev => ({ ...prev, image: file || null }));
+    } else if (editClass) {
+      setEditClass(prev => ({ ...prev, image: file || null }));
     } else {
       setNewTrainer(prev => ({ ...prev, image: file || null }));
+      setNewClass(prev => ({ ...prev, image: file || null }));
     }
   };
-
   return (
     <div className="min-h-screen pt-16 py-8 bg-gray-950">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Success Message */}
+        {successMessage && (
+          <div className="fixed inset-0 flex items-center justify-center z-50">
+            <div className="bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg animate-fade-in-out max-w-md text-center">
+              {successMessage}
+            </div>
+          </div>
+        )}
+
+        {/* Error Display */}
+        {(usersError || classesError || trainersError || paymentsError || contactError) && (
+          <ErrorMessage
+            message={usersError || classesError || trainersError || paymentsError || contactError}
+            onRetry={() => {
+              if (usersError) refetchUsers();
+              if (classesError) refetchClasses();
+              if (trainersError) refetchTrainers();
+              if (paymentsError) refetchPayments();
+              if (contactError) refetchContact();
+            }}
+          />
+        )}
+
+        {/* Loading Spinner */}
+        {(usersLoading || classesLoading || trainersLoading || paymentsLoading || contactLoading) && (
+          <div className="flex justify-center items-center my-8">
+            <LoadingSpinner size="lg" />
+          </div>
+        )}
+
+        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-white">Admin Dashboard</h1>
           <p className="text-gray-400 mt-2">Welcome back, {user?.firstName}! Manage your gym operations.</p>

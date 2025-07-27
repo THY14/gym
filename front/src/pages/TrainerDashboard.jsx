@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   BookOpen,
   Calendar,
@@ -11,8 +11,11 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useApi, useAsyncAction } from '../hooks/useApi';
+import { authAPI, bookingsAPI, paymentsAPI, trainersAPI } from '../services/api';
+import LoadingSpinner from '../components/LoadingSpinner';
+import ErrorMessage from '../components/ErrorMessage';
 
-// TrainerDashboard component with fixed Schedule tab and flexible day selection
 const TrainerDashboard = () => {
   const { user, setUser } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
@@ -31,122 +34,51 @@ const TrainerDashboard = () => {
     }
   }, [successMessage]);
 
-  // State for clients
-  const [clients, setClients] = useState(() => {
-    const savedClients = localStorage.getItem('clients');
-    return savedClients
-      ? JSON.parse(savedClients)
-      : [
-          {
-            id: 1,
-            name: 'Sarah Johnson',
-            goal: 'Lose weight',
-            fitnessLevel: 'Intermediate',
-            medicalHistory: 'None',
-            phoneNumber: '555-123-4567',
-            email: 'sarah.johnson@example.com',
-            workoutPlanId: null,
-            messages: [],
-          },
-          {
-            id: 2,
-            name: 'Mark Thompson',
-            goal: 'Build muscle',
-            fitnessLevel: 'Beginner',
-            medicalHistory: 'Asthma',
-            phoneNumber: '555-987-6543',
-            email: 'mark.thompson@example.com',
-            workoutPlanId: null,
-            messages: [],
-          },
-        ];
-  });
+  // Fetch data using useApi hook
+  const { data: clientsData, loading: clientsLoading, error: clientsError, refetch: refetchClients } = useApi(
+    () => trainersAPI.getClients(user?.id),
+    [user?.id]
+  );
+  const { data: classesData, loading: classesLoading, error: classesError, refetch: refetchClasses } = useApi(
+    () => bookingsAPI.getTrainerClasses(user?.id),
+    [user?.id]
+  );
+  const { data: classSchedulesData, loading: schedulesLoading, error: schedulesError, refetch: refetchSchedules } = useApi(
+    () => bookingsAPI.getTrainerSchedules(user?.id),
+    [user?.id]
+  );
+  const { data: trainingSessionsData, loading: sessionsLoading, error: sessionsError, refetch: refetchSessions } = useApi(
+    () => trainersAPI.getTrainingSessions(user?.id),
+    [user?.id]
+  );
+  const { data: profileData, loading: profileLoading, error: profileError, refetch: refetchProfile } = useApi(
+    () => authAPI.getUser(user?.id),
+    [user?.id]
+  );
 
-  // State for classes with availableDays
-  const [classes, setClasses] = useState(() => {
-    const savedClasses = localStorage.getItem('classes');
-    const parsedClasses = savedClasses
-      ? JSON.parse(savedClasses)
-      : [
-          {
-            id: 1,
-            name: 'Strength Training',
-            description: 'Build muscle and increase strength with comprehensive weight training.',
-            duration: 60,
-            enrolled: 12,
-            capacity: 15,
-            price: 25,
-            availableDays: ['Monday', 'Wednesday'],
-          },
-        ];
-    return parsedClasses.map(cls => ({
-      ...cls,
-      availableDays: Array.isArray(cls.availableDays) ? cls.availableDays : [],
-    }));
-  });
+  // Combine API data into states
+  const clients = clientsData || [];
+  const classes = classesData || [];
+  const classSchedules = classSchedulesData || [];
+  const trainingSessions = trainingSessionsData || [];
+  const profile = profileData || {
+    firstName: user?.firstName || '',
+    lastName: user?.lastName || '',
+    email: user?.email || '',
+    role: user?.role || 'trainer',
+    bio: user?.bio || '',
+    specialties: user?.specialties || '',
+    certifications: user?.certifications || '',
+    phoneNumber: user?.phoneNumber || '',
+    specialization: user?.specialization || '',
+    availability: user?.availability || '',
+    profileImage: user?.profileImage || 'https://via.placeholder.com/150'
+  };
 
-  // State for class schedules with availableDays
-  const [classSchedules, setClassSchedules] = useState(() => {
-    const savedSchedules = localStorage.getItem('classSchedules');
-    const parsedSchedules = savedSchedules
-      ? JSON.parse(savedSchedules)
-      : [
-          {
-            id: 1,
-            className: 'Strength Training',
-            time: '6:00 PM - 7:00 PM',
-            participants: 12,
-            capacity: 15,
-            location: 'Downtown Location',
-            room: 'Room A',
-            availableDays: ['Wednesday'],
-          },
-        ];
-    return parsedSchedules.map(sch => ({
-      ...sch,
-      availableDays: Array.isArray(sch.availableDays) ? sch.availableDays : [],
-    }));
-  });
-
-  // State for training sessions with trainingDays
-  const [trainingSessions, setTrainingSessions] = useState(() => {
-    const savedSessions = localStorage.getItem('trainingSessions');
-    const parsedSessions = savedSessions
-      ? JSON.parse(savedSessions)
-      : [
-          {
-            id: 1,
-            type: 'individual',
-            clientId: 1,
-            time: '10:00 AM - 11:00 AM',
-            startDate: '2025-07-24',
-            endDate: '2025-08-24',
-            trainingDays: ['Wednesday'],
-            location: 'Downtown Location',
-            notes: 'Focus on lower body strength',
-          },
-          {
-            id: 2,
-            type: 'group',
-            clientIds: [1, 2],
-            time: '2:00 PM - 3:00 PM',
-            startDate: '2025-07-24',
-            endDate: '2025-08-24',
-            trainingDays: ['Wednesday'],
-            location: 'Downtown Location',
-            notes: 'Group functional training',
-          },
-        ];
-    return parsedSessions.map(ses => ({
-      ...ses,
-      trainingDays: Array.isArray(ses.trainingDays) ? ses.trainingDays : [],
-    }));
-  });
-
-  // Placeholder workout plans
+  // Placeholder workout plans (kept in-memory for now)
   const workoutPlans = [
     { id: 1, name: 'Full Body Blast', description: '3x per week full body workout.' },
-    { id: 2, name: 'Strength Focus', description: 'Targeted strength building routine.' },
+    { id: 2, name: 'Strength Focus', description: 'Targeted strength building routine.' }
   ];
 
   // State for selected workout plan per client
@@ -159,7 +91,7 @@ const TrainerDashboard = () => {
     fitnessLevel: '',
     medicalHistory: '',
     phoneNumber: '',
-    email: '',
+    email: ''
   });
 
   // State for new class form
@@ -169,7 +101,7 @@ const TrainerDashboard = () => {
     duration: '',
     capacity: '',
     price: '',
-    availableDays: [],
+    availableDays: []
   });
 
   // State for new class schedule form
@@ -179,7 +111,7 @@ const TrainerDashboard = () => {
     capacity: '',
     location: '',
     room: '',
-    availableDays: [],
+    availableDays: []
   });
 
   // State for new training session form
@@ -192,7 +124,7 @@ const TrainerDashboard = () => {
     endDate: '',
     trainingDays: [],
     location: '',
-    notes: '',
+    notes: ''
   });
 
   // State for editing client, class, class schedule, or training session
@@ -201,25 +133,52 @@ const TrainerDashboard = () => {
   const [editingClassSchedule, setEditingClassSchedule] = useState(null);
   const [editingTrainingSession, setEditingTrainingSession] = useState(null);
 
-  // Persist data to localStorage
-  useEffect(() => {
-    localStorage.setItem('clients', JSON.stringify(clients));
-  }, [clients]);
+  // State for messaging
+  const [selectedClientForMessage, setSelectedClientForMessage] = useState(null);
+  const [messageText, setMessageText] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem('classes', JSON.stringify(classes));
-  }, [classes]);
+  // State for profile
+  const [editProfile, setEditProfile] = useState({
+    firstName: '',
+    lastName: '',
+    email: '',
+    role: '',
+    bio: '',
+    specialties: '',
+    certifications: '',
+    phoneNumber: '',
+    specialization: '',
+    availability: '',
+    profileImage: null
+  });
+  const [previewImage, setPreviewImage] = useState('https://via.placeholder.com/150');
 
+  // Sync profile data when fetched
   useEffect(() => {
-    localStorage.setItem('classSchedules', JSON.stringify(classSchedules));
-  }, [classSchedules]);
+    if (profileData) {
+      const initialProfile = {
+        firstName: profileData.firstName || '',
+        lastName: profileData.lastName || '',
+        email: profileData.email || '',
+        role: profileData.role || 'trainer',
+        bio: profileData.bio || '',
+        specialties: profileData.specialties || '',
+        certifications: profileData.certifications || '',
+        phoneNumber: profileData.phoneNumber || '',
+        specialization: profileData.specialization || '',
+        availability: profileData.availability || '',
+        profileImage: null
+      };
+      setEditProfile(initialProfile);
+      setPreviewImage(profileData.profileImage || 'https://via.placeholder.com/150');
+      setUser({ ...user, ...profileData });
+    }
+  }, [profileData, setUser]);
 
-  useEffect(() => {
-    localStorage.setItem('trainingSessions', JSON.stringify(trainingSessions));
-  }, [trainingSessions]);
+  const { execute } = useAsyncAction();
 
   // Handler for assigning workout plan to a client
-  const assignWorkoutPlan = (clientId) => {
+  const assignWorkoutPlan = useCallback((clientId) => {
     const selectedPlanId = selectedPlans[clientId];
     if (!selectedPlanId) {
       setSuccessMessage('Please select a workout plan to assign.');
@@ -233,15 +192,21 @@ const TrainerDashboard = () => {
       )
     );
     setSuccessMessage('Workout plan assigned successfully.');
-  };
+  }, [selectedPlans]);
 
   // Placeholder for member booking a class
-  const handleBookClass = (classId) => {
-    setSuccessMessage('Class booking functionality not implemented yet.');
-  };
+  const handleBookClass = useCallback(async (classId) => {
+    try {
+      await execute(() => bookingsAPI.bookClass(classId, user.id));
+      setSuccessMessage('Class booked successfully.');
+      refetchClasses();
+    } catch (err) {
+      setSuccessMessage(`Failed to book class: ${err.message}`);
+    }
+  }, [execute, user, refetchClasses]);
 
   // CRUD for Clients
-  const handleAddClient = (e) => {
+  const handleAddClient = useCallback(async (e) => {
     e.preventDefault();
     if (!newClient.name || !newClient.goal || !newClient.fitnessLevel || !newClient.email) {
       setSuccessMessage('Please fill in all required fields (Name, Goal, Fitness Level, Email).');
@@ -252,18 +217,25 @@ const TrainerDashboard = () => {
       setSuccessMessage('Please enter a valid email address.');
       return;
     }
-    const newId = clients.length ? Math.max(...clients.map((c) => c.id)) + 1 : 1;
-    setClients((prev) => [
-      ...prev,
-      { ...newClient, id: newId, workoutPlanId: null, messages: [] },
-    ]);
-    setNewClient({ name: '', goal: '', fitnessLevel: '', medicalHistory: '', phoneNumber: '', email: '' });
-    setSuccessMessage('Client added successfully.');
-  };
+    try {
+      const clientData = {
+        ...newClient,
+        trainerId: user.id,
+        workoutPlanId: null,
+        messages: []
+      };
+      await execute(() => trainersAPI.createClient(clientData));
+      setNewClient({ name: '', goal: '', fitnessLevel: '', medicalHistory: '', phoneNumber: '', email: '' });
+      setSuccessMessage('Client added successfully.');
+      refetchClients();
+    } catch (err) {
+      setSuccessMessage(`Failed to add client: ${err.message}`);
+    }
+  }, [newClient, user, execute, refetchClients]);
 
-  const handleUpdateClient = (e) => {
+  const handleUpdateClient = useCallback(async (e) => {
     e.preventDefault();
-    if (!editingClient.name || !editingClient.goal || !editingClient.fitnessLevel || !editingClient.email) {
+    if (!editingClient || !editingClient.name || !editingClient.goal || !editingClient.fitnessLevel || !editingClient.email) {
       setSuccessMessage('Please fill in all required fields (Name, Goal, Fitness Level, Email).');
       return;
     }
@@ -272,142 +244,164 @@ const TrainerDashboard = () => {
       setSuccessMessage('Please enter a valid email address.');
       return;
     }
-    setClients((prev) =>
-      prev.map((client) =>
-        client.id === editingClient.id ? { ...editingClient, messages: client.messages } : client
-      )
-    );
-    setEditingClient(null);
-    setSuccessMessage('Client updated successfully.');
-  };
-
-  const handleDeleteClient = (clientId) => {
-    if (window.confirm('Are you sure you want to delete this client?')) {
-      setClients((prev) => prev.filter((client) => client.id !== clientId));
-      setSelectedPlans((prev) => {
-        const updated = { ...prev };
-        delete updated[clientId];
-        return updated;
-      });
-      setTrainingSessions((prev) =>
-        prev.filter((session) =>
-          session.type === 'individual'
-            ? session.clientId !== clientId
-            : !session.clientIds.includes(clientId)
-        )
-      );
-      setSuccessMessage('Client deleted successfully.');
+    try {
+      await execute(() => trainersAPI.updateClient(editingClient.id, editingClient));
+      setEditingClient(null);
+      setSuccessMessage('Client updated successfully.');
+      refetchClients();
+    } catch (err) {
+      setSuccessMessage(`Failed to update client: ${err.message}`);
     }
-  };
+  }, [editingClient, execute, refetchClients]);
+
+  const handleDeleteClient = useCallback(async (clientId) => {
+    if (window.confirm('Are you sure you want to delete this client?')) {
+      try {
+        await execute(() => trainersAPI.deleteClient(clientId));
+        setSelectedPlans((prev) => {
+          const updated = { ...prev };
+          delete updated[clientId];
+          return updated;
+        });
+        setTrainingSessions((prev) =>
+          prev.filter((session) =>
+            session.type === 'individual'
+              ? session.clientId !== clientId
+              : !session.clientIds.includes(clientId)
+          )
+        );
+        setSuccessMessage('Client deleted successfully.');
+        refetchClients();
+        refetchSessions();
+      } catch (err) {
+        setSuccessMessage(`Failed to delete client: ${err.message}`);
+      }
+    }
+  }, [execute, refetchClients, refetchSessions]);
 
   // CRUD for Classes
-  const handleAddClass = (e) => {
+  const handleAddClass = useCallback(async (e) => {
     e.preventDefault();
     if (!newClass.name || !newClass.description || !newClass.duration || !newClass.capacity || !newClass.price || !newClass.availableDays.length) {
       setSuccessMessage('Please fill in all required fields, including at least one available day.');
       return;
     }
-    const newId = classes.length ? Math.max(...classes.map((c) => c.id)) + 1 : 1;
-    setClasses((prev) => [
-      ...prev,
-      {
+    try {
+      const classData = {
         ...newClass,
-        id: newId,
         duration: Number(newClass.duration),
         capacity: Number(newClass.capacity),
         price: Number(newClass.price),
         enrolled: 0,
-        availableDays: Array.isArray(newClass.availableDays) ? newClass.availableDays : [],
-      },
-    ]);
-    setNewClass({ name: '', description: '', duration: '', capacity: '', price: '', availableDays: [] });
-    setSuccessMessage('Class added successfully.');
-  };
+        trainerId: user.id,
+        availableDays: Array.isArray(newClass.availableDays) ? newClass.availableDays : []
+      };
+      await execute(() => bookingsAPI.createClass(classData));
+      setNewClass({ name: '', description: '', duration: '', capacity: '', price: '', availableDays: [] });
+      setSuccessMessage('Class added successfully.');
+      refetchClasses();
+    } catch (err) {
+      setSuccessMessage(`Failed to add class: ${err.message}`);
+    }
+  }, [newClass, user, execute, refetchClasses]);
 
-  const handleUpdateClass = (e) => {
+  const handleUpdateClass = useCallback(async (e) => {
     e.preventDefault();
-    if (!editingClass.name || !editingClass.description || !editingClass.duration || !editingClass.capacity || !editingClass.price || !editingClass.availableDays.length) {
+    if (!editingClass || !editingClass.name || !editingClass.description || !editingClass.duration || !editingClass.capacity || !editingClass.price || !editingClass.availableDays.length) {
       setSuccessMessage('Please fill in all required fields, including at least one available day.');
       return;
     }
-    setClasses((prev) =>
-      prev.map((cls) =>
-        cls.id === editingClass.id
-          ? {
-              ...editingClass,
-              duration: Number(editingClass.duration),
-              capacity: Number(editingClass.capacity),
-              price: Number(editingClass.price),
-              availableDays: Array.isArray(editingClass.availableDays) ? editingClass.availableDays : [],
-            }
-          : cls
-      )
-    );
-    setEditingClass(null);
-    setSuccessMessage('Class updated successfully.');
-  };
-
-  const handleDeleteClass = (classId) => {
-    if (window.confirm('Are you sure you want to delete this class?')) {
-      const className = classes.find((c) => c.id === classId).name;
-      setClasses((prev) => prev.filter((cls) => cls.id !== classId));
-      setClassSchedules((prev) => prev.filter((s) => s.className !== className));
-      setSuccessMessage('Class deleted successfully.');
+    try {
+      const classData = {
+        ...editingClass,
+        duration: Number(editingClass.duration),
+        capacity: Number(editingClass.capacity),
+        price: Number(editingClass.price),
+        availableDays: Array.isArray(editingClass.availableDays) ? editingClass.availableDays : []
+      };
+      await execute(() => bookingsAPI.updateClass(editingClass.id, classData));
+      setEditingClass(null);
+      setSuccessMessage('Class updated successfully.');
+      refetchClasses();
+    } catch (err) {
+      setSuccessMessage(`Failed to update class: ${err.message}`);
     }
-  };
+  }, [editingClass, execute, refetchClasses]);
+
+  const handleDeleteClass = useCallback(async (classId) => {
+    if (window.confirm('Are you sure you want to delete this class?')) {
+      try {
+        const className = classes.find((c) => c.id === classId).name;
+        await execute(() => bookingsAPI.deleteClass(classId));
+        setClassSchedules((prev) => prev.filter((s) => s.className !== className));
+        setSuccessMessage('Class deleted successfully.');
+        refetchClasses();
+        refetchSchedules();
+      } catch (err) {
+        setSuccessMessage(`Failed to delete class: ${err.message}`);
+      }
+    }
+  }, [classes, execute, refetchClasses, refetchSchedules]);
 
   // CRUD for Class Schedules
-  const handleAddClassSchedule = (e) => {
+  const handleAddClassSchedule = useCallback(async (e) => {
     e.preventDefault();
     if (!newClassSchedule.className || !newClassSchedule.time || !newClassSchedule.capacity || !newClassSchedule.location || !newClassSchedule.room || !newClassSchedule.availableDays.length) {
       setSuccessMessage('Please fill in all required fields, including at least one available day.');
       return;
     }
-    const newId = classSchedules.length ? Math.max(...classSchedules.map((s) => s.id)) + 1 : 1;
-    setClassSchedules((prev) => [
-      ...prev,
-      {
+    try {
+      const scheduleData = {
         ...newClassSchedule,
-        id: newId,
         capacity: Number(newClassSchedule.capacity),
         participants: 0,
-        availableDays: Array.isArray(newClassSchedule.availableDays) ? newClassSchedule.availableDays : [],
-      },
-    ]);
-    setNewClassSchedule({ className: '', time: '', capacity: '', location: '', room: '', availableDays: [] });
-    setSuccessMessage('Class schedule added successfully.');
-  };
+        trainerId: user.id,
+        availableDays: Array.isArray(newClassSchedule.availableDays) ? newClassSchedule.availableDays : []
+      };
+      await execute(() => bookingsAPI.createSchedule(scheduleData));
+      setNewClassSchedule({ className: '', time: '', capacity: '', location: '', room: '', availableDays: [] });
+      setSuccessMessage('Class schedule added successfully.');
+      refetchSchedules();
+    } catch (err) {
+      setSuccessMessage(`Failed to add class schedule: ${err.message}`);
+    }
+  }, [newClassSchedule, user, execute, refetchSchedules]);
 
-  const handleUpdateClassSchedule = (e) => {
+  const handleUpdateClassSchedule = useCallback(async (e) => {
     e.preventDefault();
-    if (!editingClassSchedule.className || !editingClassSchedule.time || !editingClassSchedule.capacity || !editingClassSchedule.location || !editingClassSchedule.room || !editingClassSchedule.availableDays.length) {
+    if (!editingClassSchedule || !editingClassSchedule.className || !editingClassSchedule.time || !editingClassSchedule.capacity || !editingClassSchedule.location || !editingClassSchedule.room || !editingClassSchedule.availableDays.length) {
       setSuccessMessage('Please fill in all required fields, including at least one available day.');
       return;
     }
-    setClassSchedules((prev) =>
-      prev.map((s) =>
-        s.id === editingClassSchedule.id
-          ? {
-              ...editingClassSchedule,
-              capacity: Number(editingClassSchedule.capacity),
-              availableDays: Array.isArray(editingClassSchedule.availableDays) ? editingClassSchedule.availableDays : [],
-            }
-          : s
-      )
-    );
-    setEditingClassSchedule(null);
-    setSuccessMessage('Class schedule updated successfully.');
-  };
-
-  const handleDeleteClassSchedule = (scheduleId) => {
-    if (window.confirm('Are you sure you want to delete this class schedule?')) {
-      setClassSchedules((prev) => prev.filter((s) => s.id !== scheduleId));
-      setSuccessMessage('Class schedule deleted successfully.');
+    try {
+      const scheduleData = {
+        ...editingClassSchedule,
+        capacity: Number(editingClassSchedule.capacity),
+        availableDays: Array.isArray(editingClassSchedule.availableDays) ? editingClassSchedule.availableDays : []
+      };
+      await execute(() => bookingsAPI.updateSchedule(editingClassSchedule.id, scheduleData));
+      setEditingClassSchedule(null);
+      setSuccessMessage('Class schedule updated successfully.');
+      refetchSchedules();
+    } catch (err) {
+      setSuccessMessage(`Failed to update class schedule: ${err.message}`);
     }
-  };
+  }, [editingClassSchedule, execute, refetchSchedules]);
+
+  const handleDeleteClassSchedule = useCallback(async (scheduleId) => {
+    if (window.confirm('Are you sure you want to delete this class schedule?')) {
+      try {
+        await execute(() => bookingsAPI.deleteSchedule(scheduleId));
+        setSuccessMessage('Class schedule deleted successfully.');
+        refetchSchedules();
+      } catch (err) {
+        setSuccessMessage(`Failed to delete class schedule: ${err.message}`);
+      }
+    }
+  }, [execute, refetchSchedules]);
 
   // CRUD for Training Sessions
-  const handleAddTrainingSession = (e) => {
+  const handleAddTrainingSession = useCallback(async (e) => {
     e.preventDefault();
     if (
       !newTrainingSession.type ||
@@ -422,24 +416,27 @@ const TrainerDashboard = () => {
       setSuccessMessage('Please fill in all required fields, including at least one training day.');
       return;
     }
-    const newId = trainingSessions.length ? Math.max(...trainingSessions.map((s) => s.id)) + 1 : 1;
-    setTrainingSessions((prev) => [
-      ...prev,
-      {
+    try {
+      const sessionData = {
         ...newTrainingSession,
-        id: newId,
         clientIds: newTrainingSession.type === 'group' ? newTrainingSession.clientIds.map(Number) : [],
         clientId: newTrainingSession.type === 'individual' ? Number(newTrainingSession.clientId) : null,
-        trainingDays: Array.isArray(newTrainingSession.trainingDays) ? newTrainingSession.trainingDays : [],
-      },
-    ]);
-    setNewTrainingSession({ type: 'individual', clientId: '', clientIds: [], time: '', startDate: '', endDate: '', trainingDays: [], location: '', notes: '' });
-    setSuccessMessage('Training session added successfully.');
-  };
+        trainerId: user.id,
+        trainingDays: Array.isArray(newTrainingSession.trainingDays) ? newTrainingSession.trainingDays : []
+      };
+      await execute(() => trainersAPI.createTrainingSession(sessionData));
+      setNewTrainingSession({ type: 'individual', clientId: '', clientIds: [], time: '', startDate: '', endDate: '', trainingDays: [], location: '', notes: '' });
+      setSuccessMessage('Training session added successfully.');
+      refetchSessions();
+    } catch (err) {
+      setSuccessMessage(`Failed to add training session: ${err.message}`);
+    }
+  }, [newTrainingSession, user, execute, refetchSessions]);
 
-  const handleUpdateTrainingSession = (e) => {
+  const handleUpdateTrainingSession = useCallback(async (e) => {
     e.preventDefault();
     if (
+      !editingTrainingSession ||
       !editingTrainingSession.type ||
       (editingTrainingSession.type === 'individual' && !editingTrainingSession.clientId) ||
       (editingTrainingSession.type === 'group' && editingTrainingSession.clientIds.length === 0) ||
@@ -452,41 +449,41 @@ const TrainerDashboard = () => {
       setSuccessMessage('Please fill in all required fields, including at least one training day.');
       return;
     }
-    setTrainingSessions((prev) =>
-      prev.map((s) =>
-        s.id === editingTrainingSession.id
-          ? {
-              ...editingTrainingSession,
-              clientIds: editingTrainingSession.type === 'group' ? editingTrainingSession.clientIds.map(Number) : [],
-              clientId: editingTrainingSession.type === 'individual' ? Number(editingTrainingSession.clientId) : null,
-              trainingDays: Array.isArray(editingTrainingSession.trainingDays) ? editingTrainingSession.trainingDays : [],
-            }
-          : s
-      )
-    );
-    setEditingTrainingSession(null);
-    setSuccessMessage('Training session updated successfully.');
-  };
-
-  const handleDeleteTrainingSession = (sessionId) => {
-    if (window.confirm('Are you sure you want to delete this training session?')) {
-      setTrainingSessions((prev) => prev.filter((s) => s.id !== sessionId));
-      setSuccessMessage('Training session deleted successfully.');
+    try {
+      const sessionData = {
+        ...editingTrainingSession,
+        clientIds: editingTrainingSession.type === 'group' ? editingTrainingSession.clientIds.map(Number) : [],
+        clientId: editingTrainingSession.type === 'individual' ? Number(editingTrainingSession.clientId) : null,
+        trainingDays: Array.isArray(editingTrainingSession.trainingDays) ? editingTrainingSession.trainingDays : []
+      };
+      await execute(() => trainersAPI.updateTrainingSession(editingTrainingSession.id, sessionData));
+      setEditingTrainingSession(null);
+      setSuccessMessage('Training session updated successfully.');
+      refetchSessions();
+    } catch (err) {
+      setSuccessMessage(`Failed to update training session: ${err.message}`);
     }
-  };
+  }, [editingTrainingSession, execute, refetchSessions]);
 
-  // Messages feature state
-  const [selectedClientForMessage, setSelectedClientForMessage] = useState(null);
-  const [messageText, setMessageText] = useState('');
+  const handleDeleteTrainingSession = useCallback(async (sessionId) => {
+    if (window.confirm('Are you sure you want to delete this training session?')) {
+      try {
+        await execute(() => trainersAPI.deleteTrainingSession(sessionId));
+        setSuccessMessage('Training session deleted successfully.');
+        refetchSessions();
+      } catch (err) {
+        setSuccessMessage(`Failed to delete training session: ${err.message}`);
+      }
+    }
+  }, [execute, refetchSessions]);
 
-  // Open message box for a client
-  const openMessageBox = (client) => {
+  // Messages (kept in-memory for now)
+  const openMessageBox = useCallback((client) => {
     setSelectedClientForMessage(client);
     setMessageText('');
-  };
+  }, []);
 
-  // Send message to client
-  const sendMessage = () => {
+  const sendMessage = useCallback(() => {
     if (!messageText.trim()) {
       setSuccessMessage('Please enter a message.');
       return;
@@ -501,51 +498,15 @@ const TrainerDashboard = () => {
     setMessageText('');
     setSelectedClientForMessage(null);
     setSuccessMessage('Message sent successfully.');
-  };
+  }, [messageText, selectedClientForMessage]);
 
-  // Cancel messaging
-  const cancelMessage = () => {
+  const cancelMessage = useCallback(() => {
     setSelectedClientForMessage(null);
     setMessageText('');
-  };
+  }, []);
 
-  // Profile state
-  const [editProfile, setEditProfile] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    role: '',
-    bio: '',
-    specialties: '',
-    certifications: '',
-    phoneNumber: '',
-    specialization: '',
-    availability: '',
-    profileImage: null,
-  });
-  const [previewImage, setPreviewImage] = useState('https://via.placeholder.com/150');
-
-  useEffect(() => {
-    if (user) {
-      const initialProfile = {
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
-        role: user.role || '',
-        bio: user.bio || '',
-        specialties: user.specialties || '',
-        certifications: user.certifications || '',
-        phoneNumber: user.phoneNumber || '',
-        specialization: user.specialization || '',
-        availability: user.availability || '',
-        profileImage: null,
-      };
-      setEditProfile(initialProfile);
-      setPreviewImage(user.profileImage || 'https://via.placeholder.com/150');
-    }
-  }, [user]);
-
-  const handleProfileChange = (e) => {
+  // Profile Management
+  const handleProfileChange = useCallback((e) => {
     const { name, value, files } = e.target;
     if (name === 'profileImage' && files && files[0]) {
       const file = files[0];
@@ -558,62 +519,59 @@ const TrainerDashboard = () => {
     } else {
       setEditProfile((prev) => ({ ...prev, [name]: value }));
     }
-  };
+  }, []);
 
-  const handleUpdateProfile = async (e) => {
+  const handleUpdateProfile = useCallback(async (e) => {
     e.preventDefault();
     try {
-      let updatedUser = { ...user, ...editProfile };
-      if (editProfile.profileImage) {
-        const reader = new FileReader();
-        const base64Image = await new Promise((resolve, reject) => {
-          reader.onload = () => resolve(reader.result);
-          reader.onerror = () => reject(new Error('Failed to read image file'));
-          reader.readAsDataURL(editProfile.profileImage);
-        });
-        updatedUser.profileImage = base64Image;
+      let updatedProfile = { ...editProfile };
+      if (editProfile.profileImage && typeof editProfile.profileImage !== 'string') {
+        const formData = new FormData();
+        formData.append('image', editProfile.profileImage);
+        const response = await execute(() => authAPI.uploadImage(formData));
+        updatedProfile.profileImage = response.data.imageUrl;
       } else {
-        updatedUser.profileImage = user?.profileImage || 'https://via.placeholder.com/150';
+        updatedProfile.profileImage = profile.profileImage || 'https://via.placeholder.com/150';
       }
-      setUser(updatedUser);
-      localStorage.setItem('user', JSON.stringify(updatedUser));
+      await execute(() => authAPI.updateUser(user.id, updatedProfile));
+      setUser({ ...user, ...updatedProfile });
       setEditProfile((prev) => ({ ...prev, profileImage: null }));
-      setPreviewImage(updatedUser.profileImage);
+      setPreviewImage(updatedProfile.profileImage);
       setSuccessMessage('Profile updated successfully.');
-    } catch (error) {
-      console.error('Profile update error:', error.message);
-      setSuccessMessage(`Failed to update profile: ${error.message}. Please try again.`);
+      refetchProfile();
+    } catch (err) {
+      setSuccessMessage(`Failed to update profile: ${err.message}`);
     }
-  };
+  }, [editProfile, profile, user, setUser, execute, refetchProfile]);
 
-  const handleCancel = () => {
-    if (user) {
+  const handleCancel = useCallback(() => {
+    if (profile) {
       setEditProfile({
-        firstName: user.firstName || '',
-        lastName: user.lastName || '',
-        email: user.email || '',
-        role: user.role || '',
-        bio: user.bio || '',
-        specialties: user.specialties || '',
-        certifications: user.certifications || '',
-        phoneNumber: user.phoneNumber || '',
-        specialization: user.specialization || '',
-        availability: user.availability || '',
-        profileImage: null,
+        firstName: profile.firstName || '',
+        lastName: profile.lastName || '',
+        email: profile.email || '',
+        role: profile.role || 'trainer',
+        bio: profile.bio || '',
+        specialties: profile.specialties || '',
+        certifications: profile.certifications || '',
+        phoneNumber: profile.phoneNumber || '',
+        specialization: profile.specialization || '',
+        availability: profile.availability || '',
+        profileImage: null
       });
-      setPreviewImage(user.profileImage || 'https://via.placeholder.com/150');
+      setPreviewImage(profile.profileImage || 'https://via.placeholder.com/150');
     }
-  };
+  }, [profile]);
 
-  // Filter Today's Schedule for current day (Wednesday, July 23, 2025)
-  const today = 'Wednesday';
+  // Filter Today's Schedule for current day (Sunday, July 27, 2025)
+  const today = 'Sunday';
   const todaySchedules = [
     ...classSchedules.filter((s) => (Array.isArray(s.availableDays) ? s.availableDays : []).includes(today)),
-    ...trainingSessions.filter((s) => (Array.isArray(s.trainingDays) ? s.trainingDays : []).includes(today)),
+    ...trainingSessions.filter((s) => (Array.isArray(s.trainingDays) ? s.trainingDays : []).includes(today))
   ];
 
   // Calculate Monthly Earnings for July 2025
-  const monthlyEarnings = {
+  const monthlyEarnings = useMemo(() => ({
     sessions: trainingSessions
       .filter((s) => new Date(s.startDate).getMonth() <= 6 && new Date(s.endDate).getMonth() >= 6 && new Date(s.startDate).getFullYear() === 2025)
       .map((s) => ({
@@ -623,27 +581,51 @@ const TrainerDashboard = () => {
           ? [clients.find(c => c.id === s.clientId)?.name || 'Unknown']
           : s.clientIds.map(id => clients.find(c => c.id === id)?.name || 'Unknown'),
         trainingDays: Array.isArray(s.trainingDays) ? s.trainingDays : [],
-        amount: s.type === 'individual' ? 50 : s.clientIds.length * 30,
+        amount: s.type === 'individual' ? 50 : s.clientIds.length * 30
       })),
     classes: classes.map((cls) => ({
       id: cls.id,
       name: cls.name,
       enrolled: cls.enrolled,
-      amount: cls.enrolled * cls.price,
-    })),
-  };
-  const totalEarnings = monthlyEarnings.sessions.reduce((sum, s) => sum + s.amount, 0) +
-                       monthlyEarnings.classes.reduce((sum, c) => sum + c.amount, 0);
+      amount: cls.enrolled * cls.price
+    }))
+  }), [trainingSessions, classes, clients]);
+  const totalEarnings = useMemo(() => 
+    monthlyEarnings.sessions.reduce((sum, s) => sum + s.amount, 0) +
+    monthlyEarnings.classes.reduce((sum, c) => sum + c.amount, 0),
+    [monthlyEarnings]
+  );
 
   return (
     <div className="min-h-screen pt-16 py-8 bg-gray-900">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Success Message */}
-          {successMessage && (
-            <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg max-w-md text-center animate-fade-in-out">
-              {successMessage}
-            </div>
-          )}
+        {successMessage && (
+          <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg max-w-md text-center animate-fade-in-out">
+            {successMessage}
+          </div>
+        )}
+
+        {/* Error Display */}
+        {(clientsError || classesError || schedulesError || sessionsError || profileError) && (
+          <ErrorMessage
+            message={clientsError || classesError || schedulesError || sessionsError || profileError}
+            onRetry={() => {
+              if (clientsError) refetchClients();
+              if (classesError) refetchClasses();
+              if (schedulesError) refetchSchedules();
+              if (sessionsError) refetchSessions();
+              if (profileError) refetchProfile();
+            }}
+          />
+        )}
+
+        {/* Loading Spinner */}
+        {(clientsLoading || classesLoading || schedulesLoading || sessionsLoading || profileLoading) && (
+          <div className="flex justify-center items-center my-8">
+            <LoadingSpinner size="lg" />
+          </div>
+        )}
 
         {/* Header */}
         <div className="mb-8">

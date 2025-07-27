@@ -1,8 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:4000/api';
 
-// Create axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -10,7 +9,6 @@ const api = axios.create({
   },
 });
 
-// Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -19,12 +17,9 @@ api.interceptors.request.use(
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor to handle errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -37,56 +32,47 @@ api.interceptors.response.use(
   }
 );
 
-// Auth API
 export const authAPI = {
   login: (credentials) => api.post('/auth/login', credentials),
   register: (userData) => api.post('/auth/register', userData),
-  getProfile: () => api.get('/users/profile'),
-  updateProfile: (data) => api.put('/users/profile', data),
+  getProfile: () => api.get('/auth/me'), // Changed from /users/profile
+  updateProfile: (data) => api.put('/auth/me', data), // Changed from /users/profile
 };
 
-// Classes API
 export const classesAPI = {
   getAll: () => api.get('/classes'),
   getById: (id) => api.get(`/classes/${id}`),
 };
 
-// Bookings API
 export const bookingsAPI = {
   create: (bookingData) => api.post('/bookings', bookingData),
   getUserBookings: () => api.get('/bookings/my-bookings'),
   cancel: (id) => api.put(`/bookings/${id}/cancel`),
 };
 
-// Payments API
 export const paymentsAPI = {
   create: (paymentData) => api.post('/payments', paymentData),
   getUserPayments: () => api.get('/payments/my-payments'),
 };
 
-// Process Tracking API
-export const processAPI = {
-  getAttendance: () => api.get('/member/attendance'), 
-  getTrainingSchedule: () => api.get('/member/training-schedule'),
+export const progressAPI = {
+  getAttendance: () => api.get('/checkIns'), // Changed to match checkIns route
+  getTrainingSchedule: () => api.get('/bookings/my-bookings'), // Adjusted to use bookings
 };
 
-// Memberships API
 export const membershipsAPI = {
-  getAll: () => api.get('/memberships'),
+  getAll: () => api.get('/membershipPlans'), // Changed to match membershipPlans route
 };
 
-// Locations API
 export const locationsAPI = {
-  getAll: () => api.get('/locations'),
-  getById: (id) => api.get(`/locations/${id}`),
+  getAll: () => api.get('/gyms'), // Changed to match gyms route
+  getById: (id) => api.get(`/gyms/${id}`),
 };
 
-// Trainers API
 export const trainersAPI = {
   getAll: () => api.get('/trainers'),
 };
 
-// Admin API
 export const adminAPI = {
   getDashboard: () => api.get('/admin/dashboard'),
   getUsers: () => api.get('/users'),

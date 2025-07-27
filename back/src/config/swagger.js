@@ -19,12 +19,12 @@ const swaggerDefinition = {
   },
   security: [{
     bearerAuth: []
-  }]
+  }],
 };
 
 const options = {
   definition: swaggerDefinition,
-  apis: ['./src/controllers/*.js'], // Adjust path if needed
+  apis: ['./src/routes/*.js'], // Adjust path if needed
 };
 
 const swaggerSpec = swaggerJSDoc(options);

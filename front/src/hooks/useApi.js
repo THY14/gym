@@ -13,7 +13,7 @@ export const useApi = (apiCall, dependencies = []) => {
         const response = await apiCall();
         setData(response.data);
       } catch (err) {
-        setError(err.response?.data?.message || 'An error occurred');
+        setError(err.response?.data?.message || err.message || 'An error occurred');
       } finally {
         setLoading(false);
       }
@@ -26,10 +26,11 @@ export const useApi = (apiCall, dependencies = []) => {
     try {
       setLoading(true);
       setError(null);
+      setData(null); // Clear previous data
       const response = await apiCall();
       setData(response.data);
     } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred');
+      setError(err.response?.data?.message || err.message || 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -49,7 +50,7 @@ export const useAsyncAction = () => {
       const result = await asyncFunction();
       return result;
     } catch (err) {
-      setError(err.response?.data?.message || 'An error occurred');
+      setError(err.response?.data?.message || err.message || 'An error occurred');
       throw err;
     } finally {
       setLoading(false);

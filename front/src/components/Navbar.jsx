@@ -23,6 +23,16 @@ const Navbar = () => {
     setIsMobileMenuOpen(prev => !prev);
   };
 
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setIsMobileMenuOpen(false); // Close mobile menu on logout
+    } catch (err) {
+      console.error('Logout failed:', err);
+      // Error will now stay internal or can be shown in login/register
+    }
+  };
+
   const authLinkClass = ({ isActive }) =>
     `text-sm ${isActive ? 'text-red-500' : 'text-white hover:text-red-500'}`;
 
@@ -38,7 +48,11 @@ const Navbar = () => {
       admin: '/admin-dashboard',
     }[user.role];
 
-    return path ? <NavLink to={path} className={navLinkClass}>Dashboard</NavLink> : null;
+    return path ? (
+      <NavLink to={path} className={navLinkClass} onClick={toggleMobileMenu}>
+        Dashboard
+      </NavLink>
+    ) : null;
   };
 
   return (
@@ -68,7 +82,9 @@ const Navbar = () => {
         {/* Desktop Auth */}
         <div className="hidden md:flex gap-4">
           {user ? (
-            <button onClick={logout} className="text-white hover:text-red-500">Logout</button>
+            <button onClick={handleLogout} className="text-white hover:text-red-500">
+              Logout
+            </button>
           ) : (
             <>
               <NavLink to="/login" className={authLinkClass}>Login</NavLink>
@@ -89,7 +105,12 @@ const Navbar = () => {
           {user && (
             <>
               {getDashboardLink()}
-              <button onClick={() => { logout(); toggleMobileMenu(); }} className="text-left text-white hover:text-red-500">Logout</button>
+              <button
+                onClick={handleLogout}
+                className="text-left text-white hover:text-red-500"
+              >
+                Logout
+              </button>
             </>
           )}
           {!user && (
